@@ -63,6 +63,41 @@
       font-size: 14px;
       opacity: 0.7;
     }
+
+    .test-button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #4A9EFF;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .test-button:hover {
+      background: #3A8EEF;
+    }
+
+    .test-button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+
+    .status-message {
+      margin-top: 15px;
+      font-size: 12px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background: rgba(74, 158, 255, 0.2);
+      border: 1px solid rgba(74, 158, 255, 0.3);
+    }
+
+    .status-message.error {
+      background: rgba(255, 74, 74, 0.2);
+      border-color: rgba(255, 74, 74, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -75,6 +110,10 @@
         <h1>Cluely Clone</h1>
         <p>Electron window is running!</p>
         <p style="margin-top: 10px; font-size: 12px;">Press Ctrl+/ to toggle visibility</p>
+
+        <button id="captureBtn" class="test-button">Test Screen Capture</button>
+
+        <div id="status" style="display: none;"></div>
       </div>
     </div>
   </div>
@@ -86,6 +125,40 @@
     } else {
       console.error('electronAPI is not available!')
     }
+
+    // Screen capture test
+    const captureBtn = document.getElementById('captureBtn')
+    const statusDiv = document.getElementById('status')
+
+    captureBtn.addEventListener('click', async () => {
+      try {
+        captureBtn.disabled = true
+        captureBtn.textContent = 'Capturing...'
+
+        statusDiv.style.display = 'none'
+
+        const result = await window.electronAPI.captureScreen()
+
+        if (result.success) {
+          statusDiv.className = 'status-message'
+          statusDiv.textContent = `Screenshot captured! Size: ${(result.size / 1024 / 1024).toFixed(2)}MB`
+          statusDiv.style.display = 'block'
+          console.log('Screenshot base64 length:', result.base64.length)
+        } else {
+          statusDiv.className = 'status-message error'
+          statusDiv.textContent = `Error: ${result.error}`
+          statusDiv.style.display = 'block'
+        }
+      } catch (error) {
+        statusDiv.className = 'status-message error'
+        statusDiv.textContent = `Error: ${error.message}`
+        statusDiv.style.display = 'block'
+        console.error('Capture error:', error)
+      } finally {
+        captureBtn.disabled = false
+        captureBtn.textContent = 'Test Screen Capture'
+      }
+    })
   </script>
 </body>
 </html>

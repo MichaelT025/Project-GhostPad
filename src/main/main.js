@@ -1,5 +1,6 @@
 const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron')
 const path = require('path')
+const { captureAndCompress } = require('../services/screen-capture')
 
 let mainWindow = null
 
@@ -19,6 +20,9 @@ function createMainWindow() {
       preload: path.join(__dirname, 'preload.js'),
     },
   })
+
+  // Exclude this window from screen capture (Windows 10 v2004+)
+  mainWindow.setContentProtection(true)
 
   // Load the renderer
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
@@ -80,10 +84,29 @@ app.on('will-quit', () => {
 })
 
 // IPC Handlers
-ipcMain.handle('capture-screen', async (_event, displayId) => {
-  // TODO: Implement screen capture
-  console.log('Screen capture requested for display:', displayId)
-  return { success: false, error: 'Not implemented yet' }
+ipcMain.handle('capture-screen', async () => {
+  try {
+    console.log('Screen capture requested')
+
+    // Capture and compress the screenshot
+    // The overlay is automatically excluded via setContentProtection(true)
+    const { base64, size } = await captureAndCompress()
+
+    console.log(`Screenshot captured successfully (${(size / 1024 / 1024).toFixed(2)}MB)`)
+
+    return {
+      success: true,
+      base64,
+      size
+    }
+  } catch (error) {
+    console.error('Failed to capture screen:', error)
+
+    return {
+      success: false,
+      error: error.message
+    }
+  }
 })
 
 ipcMain.handle('send-message', async (_event, { text }) => {
