@@ -1,7 +1,7 @@
 {
-  "name": "cluelyclaude",
+  "name": "ghostpad",
   "version": "0.1.0",
-  "description": "Windows desktop application with translucent overlay for AI-powered screen assistance",
+  "description": "GhostPad - Windows desktop application with translucent overlay for AI-powered screen assistance",
   "main": "src/main/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"electron .\"",
