@@ -5,3 +5,7 @@ build/
 config.json
 .env
 .DS_Store
+.claude/
+CLAUDE.md
+plan.md
+resources/image.png
