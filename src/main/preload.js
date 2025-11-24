@@ -6,8 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Screen capture
   captureScreen: (displayId) => ipcRenderer.invoke('capture-screen', displayId),
 
-  // Gemini messaging
-  sendMessage: (text, image) => ipcRenderer.invoke('send-message', { text, image }),
+  // LLM messaging
+  sendMessage: (text, imageBase64) => ipcRenderer.invoke('send-message', { text, imageBase64 }),
 
   // Listen for streaming message chunks
   onMessageChunk: (callback) => {
@@ -25,8 +25,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // Config management
-  saveConfig: (key, value) => ipcRenderer.invoke('save-config', { key, value }),
-  loadConfig: (key) => ipcRenderer.invoke('load-config', key),
+  saveApiKey: (provider, apiKey) => ipcRenderer.invoke('save-api-key', { provider, apiKey }),
+  getApiKey: (provider) => ipcRenderer.invoke('get-api-key', provider),
+  setActiveProvider: (provider) => ipcRenderer.invoke('set-active-provider', provider),
+  getActiveProvider: () => ipcRenderer.invoke('get-active-provider'),
+  getProviderConfig: (provider) => ipcRenderer.invoke('get-provider-config', provider),
+  setProviderConfig: (provider, config) => ipcRenderer.invoke('set-provider-config', { provider, config }),
+  validateApiKey: (provider) => ipcRenderer.invoke('validate-api-key', provider),
 
   // Display detection
   getDisplays: () => ipcRenderer.invoke('get-displays'),

@@ -98,6 +98,36 @@
       background: rgba(255, 74, 74, 0.2);
       border-color: rgba(255, 74, 74, 0.3);
     }
+
+    .test-input {
+      width: 100%;
+      max-width: 400px;
+      padding: 8px 12px;
+      margin-top: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      color: white;
+      font-size: 14px;
+    }
+
+    .test-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .response-box {
+      margin-top: 15px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      max-width: 400px;
+      max-height: 200px;
+      overflow-y: auto;
+      text-align: left;
+      font-size: 13px;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -111,9 +141,16 @@
         <p>Electron window is running!</p>
         <p style="margin-top: 10px; font-size: 12px;">Press Ctrl+/ to toggle visibility</p>
 
-        <button id="captureBtn" class="test-button">Test Screen Capture</button>
+        <input type="password" id="apiKeyInput" class="test-input" placeholder="Enter Gemini API Key" />
+        <button id="saveKeyBtn" class="test-button" style="margin-top: 10px;">Save API Key</button>
+
+        <button id="captureBtn" class="test-button" style="margin-top: 20px;">Capture Screen</button>
+
+        <input type="text" id="questionInput" class="test-input" placeholder="Ask a question..." />
+        <button id="askBtn" class="test-button" style="margin-top: 10px;">Ask Gemini</button>
 
         <div id="status" style="display: none;"></div>
+        <div id="response" class="response-box" style="display: none;"></div>
       </div>
     </div>
   </div>
@@ -126,39 +163,117 @@
       console.error('electronAPI is not available!')
     }
 
-    // Screen capture test
+    // Elements
     const captureBtn = document.getElementById('captureBtn')
     const statusDiv = document.getElementById('status')
+    const responseDiv = document.getElementById('response')
+    const apiKeyInput = document.getElementById('apiKeyInput')
+    const saveKeyBtn = document.getElementById('saveKeyBtn')
+    const questionInput = document.getElementById('questionInput')
+    const askBtn = document.getElementById('askBtn')
 
+    // Store captured screenshot
+    let capturedScreenshot = null
+
+    // Load existing API key on startup
+    window.electronAPI.getApiKey('gemini').then(result => {
+      if (result.success && result.apiKey) {
+        apiKeyInput.value = result.apiKey
+        showStatus('API key loaded', false)
+      }
+    })
+
+    // Save API key
+    saveKeyBtn.addEventListener('click', async () => {
+      const apiKey = apiKeyInput.value.trim()
+      if (!apiKey) {
+        showStatus('Please enter an API key', true)
+        return
+      }
+
+      try {
+        saveKeyBtn.disabled = true
+        saveKeyBtn.textContent = 'Saving...'
+
+        const result = await window.electronAPI.saveApiKey('gemini', apiKey)
+
+        if (result.success) {
+          showStatus('API key saved successfully!', false)
+        } else {
+          showStatus(`Error: ${result.error}`, true)
+        }
+      } catch (error) {
+        showStatus(`Error: ${error.message}`, true)
+      } finally {
+        saveKeyBtn.disabled = false
+        saveKeyBtn.textContent = 'Save API Key'
+      }
+    })
+
+    // Screen capture test
     captureBtn.addEventListener('click', async () => {
       try {
         captureBtn.disabled = true
         captureBtn.textContent = 'Capturing...'
 
-        statusDiv.style.display = 'none'
+        responseDiv.style.display = 'none'
 
         const result = await window.electronAPI.captureScreen()
 
         if (result.success) {
-          statusDiv.className = 'status-message'
-          statusDiv.textContent = `Screenshot captured! Size: ${(result.size / 1024 / 1024).toFixed(2)}MB`
-          statusDiv.style.display = 'block'
+          capturedScreenshot = result.base64
+          showStatus(`Screenshot captured! Size: ${(result.size / 1024 / 1024).toFixed(2)}MB`, false)
           console.log('Screenshot base64 length:', result.base64.length)
         } else {
-          statusDiv.className = 'status-message error'
-          statusDiv.textContent = `Error: ${result.error}`
-          statusDiv.style.display = 'block'
+          showStatus(`Error: ${result.error}`, true)
         }
       } catch (error) {
-        statusDiv.className = 'status-message error'
-        statusDiv.textContent = `Error: ${error.message}`
-        statusDiv.style.display = 'block'
+        showStatus(`Error: ${error.message}`, true)
         console.error('Capture error:', error)
       } finally {
         captureBtn.disabled = false
-        captureBtn.textContent = 'Test Screen Capture'
+        captureBtn.textContent = 'Capture Screen'
       }
     })
+
+    // Ask Gemini
+    askBtn.addEventListener('click', async () => {
+      const question = questionInput.value.trim()
+      if (!question) {
+        showStatus('Please enter a question', true)
+        return
+      }
+
+      try {
+        askBtn.disabled = true
+        askBtn.textContent = 'Asking...'
+        responseDiv.style.display = 'none'
+
+        const result = await window.electronAPI.sendMessage(question, capturedScreenshot)
+
+        if (result.success) {
+          showStatus(`Response from ${result.provider}:`, false)
+          responseDiv.textContent = result.response
+          responseDiv.style.display = 'block'
+          console.log('LLM Response:', result.response)
+        } else {
+          showStatus(`Error: ${result.error}`, true)
+        }
+      } catch (error) {
+        showStatus(`Error: ${error.message}`, true)
+        console.error('Ask error:', error)
+      } finally {
+        askBtn.disabled = false
+        askBtn.textContent = 'Ask Gemini'
+      }
+    })
+
+    // Helper function to show status messages
+    function showStatus(message, isError) {
+      statusDiv.className = isError ? 'status-message error' : 'status-message'
+      statusDiv.textContent = message
+      statusDiv.style.display = 'block'
+    }
   </script>
 </body>
 </html>

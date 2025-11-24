@@ -1,8 +1,11 @@
 const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron')
 const path = require('path')
 const { captureAndCompress } = require('../services/screen-capture')
+const LLMFactory = require('../services/llm-factory')
+const ConfigService = require('../services/config-service')
 
 let mainWindow = null
+let configService = null
 
 // Create the main overlay window
 function createMainWindow() {
@@ -60,6 +63,9 @@ function registerHotkeys() {
 
 // App lifecycle events
 app.whenReady().then(() => {
+  // Initialize config service
+  configService = new ConfigService()
+
   createMainWindow()
   registerHotkeys()
 
@@ -109,22 +115,127 @@ ipcMain.handle('capture-screen', async () => {
   }
 })
 
-ipcMain.handle('send-message', async (_event, { text }) => {
-  // TODO: Implement Gemini API call
-  console.log('Message send requested:', text)
-  return { success: false, error: 'Not implemented yet' }
+ipcMain.handle('send-message', async (_event, { text, imageBase64 }) => {
+  try {
+    console.log('Message send requested:', text)
+
+    // Get active provider and API key
+    const providerName = configService.getActiveProvider()
+    const apiKey = configService.getApiKey(providerName)
+
+    if (!apiKey) {
+      return {
+        success: false,
+        error: `No API key configured for ${providerName}. Please add your API key in settings.`
+      }
+    }
+
+    // Get provider configuration
+    const config = configService.getProviderConfig(providerName)
+
+    // Create provider instance
+    const provider = LLMFactory.createProvider(providerName, apiKey, config)
+
+    // Send message to LLM
+    const response = await provider.sendMessage(text, imageBase64)
+
+    console.log('Response received from LLM')
+
+    return {
+      success: true,
+      response,
+      provider: providerName
+    }
+  } catch (error) {
+    console.error('Failed to send message:', error)
+
+    return {
+      success: false,
+      error: error.message
+    }
+  }
 })
 
-ipcMain.handle('save-config', async (_event, { key }) => {
-  // TODO: Implement config save
-  console.log('Config save requested:', key)
-  return { success: true }
+// Config management IPC handlers
+ipcMain.handle('save-api-key', async (_event, { provider, apiKey }) => {
+  try {
+    configService.setApiKey(provider, apiKey)
+    console.log(`API key saved for provider: ${provider}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to save API key:', error)
+    return { success: false, error: error.message }
+  }
 })
 
-ipcMain.handle('load-config', async (_event, key) => {
-  // TODO: Implement config load
-  console.log('Config load requested:', key)
-  return { success: true, value: null }
+ipcMain.handle('get-api-key', async (_event, provider) => {
+  try {
+    const apiKey = configService.getApiKey(provider)
+    return { success: true, apiKey }
+  } catch (error) {
+    console.error('Failed to get API key:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('set-active-provider', async (_event, provider) => {
+  try {
+    configService.setActiveProvider(provider)
+    console.log(`Active provider set to: ${provider}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to set active provider:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('get-active-provider', async () => {
+  try {
+    const provider = configService.getActiveProvider()
+    return { success: true, provider }
+  } catch (error) {
+    console.error('Failed to get active provider:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('get-provider-config', async (_event, provider) => {
+  try {
+    const config = configService.getProviderConfig(provider)
+    return { success: true, config }
+  } catch (error) {
+    console.error('Failed to get provider config:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('set-provider-config', async (_event, { provider, config }) => {
+  try {
+    configService.setProviderConfig(provider, config)
+    console.log(`Provider config saved for: ${provider}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to set provider config:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('validate-api-key', async (_event, provider) => {
+  try {
+    const apiKey = configService.getApiKey(provider)
+    if (!apiKey) {
+      return { success: false, valid: false, error: 'No API key configured' }
+    }
+
+    const config = configService.getProviderConfig(provider)
+    const providerInstance = LLMFactory.createProvider(provider, apiKey, config)
+    const isValid = await providerInstance.validateApiKey()
+
+    return { success: true, valid: isValid }
+  } catch (error) {
+    console.error('Failed to validate API key:', error)
+    return { success: false, valid: false, error: error.message }
+  }
 })
 
 ipcMain.handle('get-displays', async () => {

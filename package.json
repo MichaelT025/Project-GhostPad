@@ -23,7 +23,6 @@
     "@vitejs/plugin-react": "^5.1.1",
     "electron": "32.2.7",
     "electron-builder": "^26.0.12",
-    "electron-store": "^11.0.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "sharp": "^0.34.5",
