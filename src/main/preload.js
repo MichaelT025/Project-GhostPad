@@ -36,6 +36,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Display detection
   getDisplays: () => ipcRenderer.invoke('get-displays'),
 
+  // Window management
+  openSettings: () => ipcRenderer.invoke('open-settings'),
+  quitApp: () => ipcRenderer.invoke('quit-app'),
+
   // Cleanup listeners
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel)

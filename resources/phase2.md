@@ -28,6 +28,7 @@ This document outlines features to be implemented after MVP testing and initial 
 - Model selection per provider
 - System prompt configuration
 - Theme customization options
+- Latex support
 
 ## Medium Priority
 

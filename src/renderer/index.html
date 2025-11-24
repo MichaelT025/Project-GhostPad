@@ -21,7 +21,7 @@
     #root {
       width: 100%;
       height: 100vh;
-      background: rgba(13, 13, 13, 0.7);
+      background: rgba(13, 13, 13, 0.85);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       border-radius: 12px;
@@ -30,6 +30,7 @@
       flex-direction: column;
     }
 
+    /* Title Bar */
     .title-bar {
       height: 40px;
       -webkit-app-region: drag;
@@ -37,243 +38,267 @@
       border-radius: 12px 12px 0 0;
       display: flex;
       align-items: center;
-      padding: 0 15px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      justify-content: space-between;
+      padding: 0 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .content {
-      flex: 1;
+    .title-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-bar-right {
+      display: flex;
+      align-items: center;
+    }
+
+    .icon-btn {
+      -webkit-app-region: no-drag;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      -webkit-app-region: no-drag;
+      transition: all 0.2s;
     }
 
-    .test-message {
-      text-align: center;
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .icon-btn.close:hover {
+      background: rgba(255, 74, 74, 0.3);
+      color: #ff4a4a;
+    }
+
+    /* Messages Container */
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
       padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
-    .test-message h1 {
-      font-size: 24px;
-      margin-bottom: 10px;
+    .messages-container::-webkit-scrollbar {
+      width: 8px;
     }
 
-    .test-message p {
+    .messages-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .messages-container::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    .messages-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Message Bubbles */
+    .message {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 12px;
       font-size: 14px;
-      opacity: 0.7;
+      line-height: 1.5;
+      word-wrap: break-word;
     }
 
-    .test-button {
-      margin-top: 20px;
-      padding: 10px 20px;
+    .message.user {
+      align-self: flex-end;
+      background: rgba(74, 158, 255, 0.2);
+      border: 1px solid rgba(74, 158, 255, 0.3);
+      margin-left: auto;
+    }
+
+    .message.ai {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .message-meta {
+      font-size: 11px;
+      opacity: 0.5;
+      margin-top: 4px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      opacity: 0.4;
+    }
+
+    .empty-state h2 {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+    }
+
+    /* Input Area */
+    .input-area {
+      padding: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .input-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 8px 12px;
+    }
+
+    .input-container:focus-within {
+      border-color: rgba(74, 158, 255, 0.5);
+    }
+
+    #screenshot-btn {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    #screenshot-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    #screenshot-btn.active {
+      background: rgba(74, 158, 255, 0.3);
+      color: #4A9EFF;
+    }
+
+    #message-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    #message-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    #send-btn {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border: none;
       background: #4A9EFF;
       color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
       cursor: pointer;
-      transition: background 0.2s;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
     }
 
-    .test-button:hover {
+    #send-btn:hover:not(:disabled) {
       background: #3A8EEF;
     }
 
-    .test-button:disabled {
-      background: #666;
+    #send-btn:disabled {
+      background: rgba(74, 158, 255, 0.3);
       cursor: not-allowed;
     }
 
-    .status-message {
-      margin-top: 15px;
-      font-size: 12px;
-      padding: 8px 12px;
-      border-radius: 4px;
-      background: rgba(74, 158, 255, 0.2);
-      border: 1px solid rgba(74, 158, 255, 0.3);
-    }
-
-    .status-message.error {
-      background: rgba(255, 74, 74, 0.2);
-      border-color: rgba(255, 74, 74, 0.3);
-    }
-
-    .test-input {
-      width: 100%;
-      max-width: 400px;
-      padding: 8px 12px;
-      margin-top: 10px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
-      color: white;
-      font-size: 14px;
-    }
-
-    .test-input::placeholder {
-      color: rgba(255, 255, 255, 0.5);
-    }
-
-    .response-box {
-      margin-top: 15px;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 6px;
-      max-width: 400px;
-      max-height: 200px;
-      overflow-y: auto;
-      text-align: left;
-      font-size: 13px;
-      line-height: 1.5;
+    /* SVG Icons */
+    .icon-svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
     }
   </style>
 </head>
 <body>
   <div id="root">
+    <!-- Title Bar -->
     <div class="title-bar">
-      <span style="font-size: 12px; opacity: 0.6;">GhostPad</span>
+      <div class="title-bar-left">
+        <button id="home-btn" class="icon-btn" title="Settings">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+          </svg>
+        </button>
+        <span style="font-size: 12px; opacity: 0.6;">GhostPad</span>
+      </div>
+      <div class="title-bar-right">
+        <button id="close-btn" class="icon-btn close" title="Close">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
+      </div>
     </div>
-    <div class="content">
-      <div class="test-message">
-        <h1>GhostPad</h1>
-        <p>Electron window is running!</p>
-        <p style="margin-top: 10px; font-size: 12px;">Press Ctrl+/ to toggle visibility</p>
 
-        <input type="password" id="apiKeyInput" class="test-input" placeholder="Enter Gemini API Key" />
-        <button id="saveKeyBtn" class="test-button" style="margin-top: 10px;">Save API Key</button>
+    <!-- Messages Container -->
+    <div id="messages-container" class="messages-container">
+      <div class="empty-state">
+        <h2>Welcome to GhostPad</h2>
+        <p>Capture your screen and ask questions</p>
+      </div>
+    </div>
 
-        <button id="captureBtn" class="test-button" style="margin-top: 20px;">Capture Screen</button>
-
-        <input type="text" id="questionInput" class="test-input" placeholder="Ask a question..." />
-        <button id="askBtn" class="test-button" style="margin-top: 10px;">Ask Gemini</button>
-
-        <div id="status" style="display: none;"></div>
-        <div id="response" class="response-box" style="display: none;"></div>
+    <!-- Input Area -->
+    <div class="input-area">
+      <div class="input-container">
+        <button id="screenshot-btn" title="Capture Screen">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+          </svg>
+        </button>
+        <input
+          type="text"
+          id="message-input"
+          placeholder="Ask about your screen or conversation, or ↩ for Assist"
+          autocomplete="off"
+        />
+        <button id="send-btn" title="Send">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
 
-  <script>
-    // Test that electronAPI is available
-    if (window.electronAPI) {
-      console.log('electronAPI is available:', Object.keys(window.electronAPI))
-    } else {
-      console.error('electronAPI is not available!')
-    }
-
-    // Elements
-    const captureBtn = document.getElementById('captureBtn')
-    const statusDiv = document.getElementById('status')
-    const responseDiv = document.getElementById('response')
-    const apiKeyInput = document.getElementById('apiKeyInput')
-    const saveKeyBtn = document.getElementById('saveKeyBtn')
-    const questionInput = document.getElementById('questionInput')
-    const askBtn = document.getElementById('askBtn')
-
-    // Store captured screenshot
-    let capturedScreenshot = null
-
-    // Load existing API key on startup
-    window.electronAPI.getApiKey('gemini').then(result => {
-      if (result.success && result.apiKey) {
-        apiKeyInput.value = result.apiKey
-        showStatus('API key loaded', false)
-      }
-    })
-
-    // Save API key
-    saveKeyBtn.addEventListener('click', async () => {
-      const apiKey = apiKeyInput.value.trim()
-      if (!apiKey) {
-        showStatus('Please enter an API key', true)
-        return
-      }
-
-      try {
-        saveKeyBtn.disabled = true
-        saveKeyBtn.textContent = 'Saving...'
-
-        const result = await window.electronAPI.saveApiKey('gemini', apiKey)
-
-        if (result.success) {
-          showStatus('API key saved successfully!', false)
-        } else {
-          showStatus(`Error: ${result.error}`, true)
-        }
-      } catch (error) {
-        showStatus(`Error: ${error.message}`, true)
-      } finally {
-        saveKeyBtn.disabled = false
-        saveKeyBtn.textContent = 'Save API Key'
-      }
-    })
-
-    // Screen capture test
-    captureBtn.addEventListener('click', async () => {
-      try {
-        captureBtn.disabled = true
-        captureBtn.textContent = 'Capturing...'
-
-        responseDiv.style.display = 'none'
-
-        const result = await window.electronAPI.captureScreen()
-
-        if (result.success) {
-          capturedScreenshot = result.base64
-          showStatus(`Screenshot captured! Size: ${(result.size / 1024 / 1024).toFixed(2)}MB`, false)
-          console.log('Screenshot base64 length:', result.base64.length)
-        } else {
-          showStatus(`Error: ${result.error}`, true)
-        }
-      } catch (error) {
-        showStatus(`Error: ${error.message}`, true)
-        console.error('Capture error:', error)
-      } finally {
-        captureBtn.disabled = false
-        captureBtn.textContent = 'Capture Screen'
-      }
-    })
-
-    // Ask Gemini
-    askBtn.addEventListener('click', async () => {
-      const question = questionInput.value.trim()
-      if (!question) {
-        showStatus('Please enter a question', true)
-        return
-      }
-
-      try {
-        askBtn.disabled = true
-        askBtn.textContent = 'Asking...'
-        responseDiv.style.display = 'none'
-
-        const result = await window.electronAPI.sendMessage(question, capturedScreenshot)
-
-        if (result.success) {
-          showStatus(`Response from ${result.provider}:`, false)
-          responseDiv.textContent = result.response
-          responseDiv.style.display = 'block'
-          console.log('LLM Response:', result.response)
-        } else {
-          showStatus(`Error: ${result.error}`, true)
-        }
-      } catch (error) {
-        showStatus(`Error: ${error.message}`, true)
-        console.error('Ask error:', error)
-      } finally {
-        askBtn.disabled = false
-        askBtn.textContent = 'Ask Gemini'
-      }
-    })
-
-    // Helper function to show status messages
-    function showStatus(message, isError) {
-      statusDiv.className = isError ? 'status-message error' : 'status-message'
-      statusDiv.textContent = message
-      statusDiv.style.display = 'block'
-    }
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>

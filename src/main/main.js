@@ -5,6 +5,7 @@ const LLMFactory = require('../services/llm-factory')
 const ConfigService = require('../services/config-service')
 
 let mainWindow = null
+let settingsWindow = null
 let configService = null
 
 // Create the main overlay window
@@ -36,6 +37,43 @@ function createMainWindow() {
   // Handle window closed
   mainWindow.on('closed', () => {
     mainWindow = null
+  })
+}
+
+// Create the settings window
+function createSettingsWindow() {
+  // Don't create if already exists
+  if (settingsWindow) {
+    settingsWindow.focus()
+    return
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 600,
+    height: 700,
+    parent: mainWindow,
+    modal: false,
+    show: false,
+    backgroundColor: '#1a1a1a',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  })
+
+  // TODO: Create settings.html for settings UI
+  // For now, load a placeholder
+  settingsWindow.loadURL('data:text/html,<html><body style="background:#1a1a1a;color:white;font-family:sans-serif;padding:20px;"><h1>Settings</h1><p>Settings panel coming soon...</p><p>API keys, providers, and system prompts will be configured here.</p></body></html>')
+
+  // Show when ready
+  settingsWindow.once('ready-to-show', () => {
+    settingsWindow.show()
+  })
+
+  // Handle window closed
+  settingsWindow.on('closed', () => {
+    settingsWindow = null
   })
 }
 
@@ -242,4 +280,20 @@ ipcMain.handle('get-displays', async () => {
   // TODO: Implement display detection
   console.log('Get displays requested')
   return { success: true, displays: [] }
+})
+
+// Open settings window
+ipcMain.handle('open-settings', async () => {
+  try {
+    createSettingsWindow()
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to open settings:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+// Quit application
+ipcMain.handle('quit-app', async () => {
+  app.quit()
 })
