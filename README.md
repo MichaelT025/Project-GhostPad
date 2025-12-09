@@ -177,18 +177,22 @@ GhostPad uses a sophisticated approach to exclude the overlay from screenshots:
 - ✅ Development mode debugging features
 
 **In Progress:**
-- ⏳ Multi-provider LLM architecture
-- ⏳ Gemini provider implementation (first provider)
-- ⏳ Chat UI implementation
-- ⏳ Multi-provider settings panel
+- ⏳ **Chat UI Polish & Streaming Integration**
+  - ⏳ Streaming responses with progressive rendering
+  - ⏳ Markdown rendering (GitHub-flavored)
+  - ⏳ LaTeX math equation support (inline & block)
+  - ⏳ Code syntax highlighting (10+ languages)
+  - ⏳ Copy buttons for code blocks and messages
+  - ⏳ Enhanced animations and timestamps
+  - ⏳ Improved error handling with retry
+- ⏳ Multi-provider settings panel UI
 
 **Planned:**
-- ⬜ OpenAI provider adapter
-- ⬜ Anthropic provider adapter
-- ⬜ Streaming responses
+- ⬜ OpenAI provider adapter (GPT-4 Vision)
+- ⬜ Anthropic provider adapter (Claude 3)
 - ⬜ Multi-monitor support
-- ⬜ Error handling and user feedback
-- ⬜ Provider switching UI
+- ⬜ Custom API endpoints
+- ⬜ Local LLM support (Ollama, LM Studio)
 - ⬜ Installer for Windows
 
 ## Troubleshooting
@@ -256,30 +260,38 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Roadmap
 
-### Phase 1 (Current)
+### Phase 1 (Completed) ✅
 - [x] Core Electron setup and overlay
 - [x] Screen capture with compression
 - [x] Multi-provider LLM architecture
-- [x] Gemini provider implementation
-- [ ] Basic chat UI
-- [ ] Multi-provider settings panel
+- [x] Gemini provider implementation with streaming backend
+- [x] Basic chat UI (vanilla JS)
 
-### Phase 2 (Next)
-- [ ] OpenAI provider adapter
-- [ ] Anthropic Claude provider adapter
-- [ ] Streaming responses for all providers
+### Phase 2 (Current) ⏳
+- [x] Streaming response backend (Gemini)
+- [ ] **Streaming frontend integration** (IPC + progressive rendering)
+- [ ] **Markdown rendering** (marked.js - GitHub-flavored)
+- [ ] **LaTeX math rendering** (KaTeX - inline & block equations)
+- [ ] **Code syntax highlighting** (highlight.js - 10+ languages)
+- [ ] **Interactive elements** (copy buttons, animations, timestamps)
+- [ ] **Enhanced error handling** (categorization, retry logic)
+- [ ] Multi-provider settings panel UI
+
+### Phase 3 (Next)
+- [ ] OpenAI provider adapter (GPT-4 Vision)
+- [ ] Anthropic Claude provider adapter (Claude 3 Opus/Sonnet/Haiku)
 - [ ] Provider switching in UI
 - [ ] Advanced error handling per provider
+- [ ] Multi-monitor support with display selection
 
-### Phase 3 (Future)
+### Phase 4 (Future)
 - [ ] Custom API endpoint support
 - [ ] Local LLM support (Ollama, LM Studio)
-- [ ] Multi-monitor support with display selection
 - [ ] Custom system prompts per provider
 - [ ] Screenshot annotations
 - [ ] Conversation export
 - [ ] Auto-update functionality
-- [ ] macOS and Linux support (future)
+- [ ] macOS and Linux support (if demand exists)
 
 ## License
 

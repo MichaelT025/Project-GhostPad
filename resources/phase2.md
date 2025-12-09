@@ -2,33 +2,45 @@
 
 This document outlines features to be implemented after MVP testing and initial release.
 
-## High Priority
+## Currently Being Implemented (Moved from Phase 2)
 
-### 1. Streaming Responses
+### ✅ Streaming Responses
+- ✅ Backend: `streamResponse()` already implemented in Gemini provider
+- ⏳ Frontend: IPC streaming integration in progress
 - Real-time text streaming from LLM providers
 - Gradual display of AI responses as they arrive
 - Better user experience for long responses
-- Uses existing `streamResponse()` method in provider classes
 
-### 2. Multi-Monitor Support
+### ⏳ Chat UI Polish
+- ⏳ Markdown rendering (marked.js) - supports GitHub-flavored markdown
+- ⏳ LaTeX math rendering (KaTeX) - inline and block equations
+- ⏳ Code syntax highlighting (highlight.js) - 10+ languages
+- ⏳ Copy buttons for code blocks and messages
+- ⏳ Improved loading animations with typing indicator
+- ⏳ Smooth message fade-in animations
+- ⏳ Timestamps with relative time formatting
+- ⏳ Enhanced error handling with retry functionality
+
+## High Priority
+
+### 1. Multi-Monitor Support
 - Allow users to select which display to capture
 - Display picker in settings
 - Remember last selected display
 - Support for different DPI/resolution per monitor
+
+### 2. Settings Panel UI
+- API key management interface
+- Provider selection dropdown
+- Model selection per provider
+- System prompt configuration
+- Theme customization options
 
 ### 3. Provider Expansion
 - **OpenAI Integration**: GPT-4 Vision support
 - **Anthropic Integration**: Claude 3 (Opus/Sonnet/Haiku)
 - **Custom API Endpoints**: Allow users to configure custom LLM endpoints
 - **Local Models**: Ollama, LM Studio integration
-
-### 4. Settings Panel UI
-- API key management interface
-- Provider selection dropdown
-- Model selection per provider
-- System prompt configuration
-- Theme customization options
-- Latex support
 
 ## Medium Priority
 
@@ -63,14 +75,10 @@ This document outlines features to be implemented after MVP testing and initial 
 - Context window management
 - Temperature/top-p controls per provider
 - Cost tracking per provider
-- Response formatting (markdown rendering)
-- Code syntax highlighting in responses
 
 ### 10. UI/UX Improvements
 - Drag-and-drop image upload
 - Notification system for responses
-- Loading animations
-- Message timestamps
 - Avatar customization
 
 ### 11. Accessibility
