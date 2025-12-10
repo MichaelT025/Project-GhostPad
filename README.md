@@ -13,7 +13,7 @@ GhostPad is a lightweight, privacy-focused desktop assistant that stays on top o
 **Core Features:**
 - 🪟 Always-on-top translucent overlay
 - 📸 Instant screen capture (overlay automatically excluded)
-- 🤖 **Multi-provider LLM support** - Use Gemini, OpenAI, Anthropic, or custom APIs
+- 🤖 **Multi-provider LLM support** - Gemini, OpenAI, and Anthropic fully integrated
 - 🔑 Bring your own API key - No subscriptions, pay only for what you use
 - 🔒 Privacy-first: no data persistence
 - ⌨️ Global keyboard shortcuts
@@ -32,7 +32,7 @@ GhostPad is a lightweight, privacy-focused desktop assistant that stays on top o
 - API key for your chosen LLM provider:
   - **Gemini**: [Get API key](https://makersuite.google.com/app/apikey) (free tier available)
   - **OpenAI**: [Get API key](https://platform.openai.com/api-keys) (pay-as-you-go)
-  - **Anthropic**: [Get API key](https://console.anthropic.com/) (coming soon)
+  - **Anthropic**: [Get API key](https://console.anthropic.com/) (Claude Haiku 4.5 default)
 
 ### Setup
 
@@ -71,9 +71,9 @@ GhostPad is a lightweight, privacy-focused desktop assistant that stays on top o
 ### Basic Workflow
 
 1. **Capture a screenshot**
-   - Click the "Use Screen" button
+   - Click the screenshot button
    - The overlay will be automatically excluded from the capture
-   - You'll see a confirmation when the screenshot is attached
+   - You'll see the button highlighted when a screenshot is attached
 
 2. **Ask a question**
    - Type your question in the input field
@@ -98,9 +98,9 @@ GhostPad is a lightweight, privacy-focused desktop assistant that stays on top o
 - **UI:** Vanilla JavaScript/HTML/CSS
 - **Build Tool:** Vite
 - **LLM Providers:** Multi-provider architecture
-  - Google Gemini (`@google/generative-ai`)
-  - OpenAI (coming soon)
-  - Anthropic Claude (coming soon)
+  - Google Gemini (`@google/generative-ai`) - Flash 2.0 default
+  - OpenAI (`openai`) - GPT-4.1 with vision support
+  - Anthropic Claude (`@anthropic-ai/sdk`) - Haiku 4.5 default
   - Custom/Local models (future)
 - **Screen Capture:** Electron's `desktopCapturer` API
 - **Image Processing:** Sharp (for compression)
@@ -175,25 +175,27 @@ GhostPad uses a sophisticated approach to exclude the overlay from screenshots:
 - ✅ Screen capture with overlay exclusion
 - ✅ Image compression and optimization
 - ✅ Development mode debugging features
+- ✅ Multi-provider LLM architecture (Gemini, OpenAI, Anthropic)
+- ✅ All three providers fully integrated with streaming support
+- ✅ Settings panel with provider selection and API key management
+- ✅ Streaming responses with progressive rendering
+- ✅ Markdown rendering (GitHub-flavored)
+- ✅ LaTeX math equation support (inline & block)
+- ✅ Code syntax highlighting (10+ languages)
+- ✅ Copy buttons for code blocks and messages
 
 **In Progress:**
 - ⏳ **Chat UI Polish & Streaming Integration**
-  - ⏳ Streaming responses with progressive rendering
-  - ⏳ Markdown rendering (GitHub-flavored)
-  - ⏳ LaTeX math equation support (inline & block)
-  - ⏳ Code syntax highlighting (10+ languages)
-  - ⏳ Copy buttons for code blocks and messages
+
   - ⏳ Enhanced animations and timestamps
   - ⏳ Improved error handling with retry
-- ⏳ Multi-provider settings panel UI
 
 **Planned:**
-- ⬜ OpenAI provider adapter (GPT-4 Vision)
-- ⬜ Anthropic provider adapter (Claude 3)
 - ⬜ Multi-monitor support
 - ⬜ Custom API endpoints
 - ⬜ Local LLM support (Ollama, LM Studio)
 - ⬜ Installer for Windows
+- ⬜ Screenshot annotations
 
 ## Troubleshooting
 
@@ -233,18 +235,20 @@ npm start
 4. Copy the key and paste it into GhostPad's settings
 5. **Free tier**: 60 requests per minute
 
-### OpenAI (Coming Soon)
+### OpenAI
 1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
 2. Create an account or sign in
 3. Navigate to API Keys section
 4. Click "Create new secret key"
-5. **Pricing**: Pay-as-you-go (GPT-4 Vision: ~$0.01-0.03 per image)
+5. **Default Model**: GPT-4.1 (latest with vision support)
+6. **Pricing**: Pay-as-you-go
 
-### Anthropic Claude (Coming Soon)
+### Anthropic Claude
 1. Visit [Anthropic Console](https://console.anthropic.com/)
 2. Sign up for API access
 3. Generate an API key
-4. **Pricing**: Pay-as-you-go
+4. **Default Model**: Claude Haiku 4.5 (fastest and most affordable)
+5. **Pricing**: Pay-as-you-go
 
 **Security Note:** All API keys are stored locally on your machine and never transmitted to us or any third parties besides your chosen LLM provider.
 
@@ -302,8 +306,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - Built with [Electron](https://www.electronjs.org/)
 - LLM Providers:
   - [Google Gemini](https://deepmind.google/technologies/gemini/)
-  - [OpenAI](https://openai.com/) (coming soon)
-  - [Anthropic Claude](https://www.anthropic.com/) (coming soon)
+  - [OpenAI](https://openai.com/)
+  - [Anthropic Claude](https://www.anthropic.com/)
 - Image processing by [Sharp](https://sharp.pixelplumbing.com/)
 
 ## Support
