@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GhostPad</title>
 
+  <!-- Design Tokens -->
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/typography.css">
+  <link rel="stylesheet" href="styles/icons.css">
+  <link rel="stylesheet" href="styles/components.css">
+
+  <!-- Typography - Space Grotesk Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
   <!-- Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked@11.0.0/marked.min.js"></script>
 
@@ -34,72 +45,152 @@
     #root {
       width: 100%;
       height: 100vh;
-      background: rgba(13, 13, 13, 0.85);
+      background: rgba(18, 18, 18, 0.92);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      border-radius: 12px;
+      border-radius: 20px;
       border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.3);
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     /* Title Bar */
     .title-bar {
-      height: 40px;
-      -webkit-app-region: drag;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 12px 12px 0 0;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      padding: 0 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .title-bar-left {
-      display: flex;
       align-items: center;
-      gap: 10px;
+      padding: var(--space-8) var(--space-12);
+      background: var(--panel-strong);
+      border-bottom: 1px solid var(--border);
+      -webkit-app-region: drag;
     }
 
+    .title-bar-left,
     .title-bar-right {
       display: flex;
       align-items: center;
+      gap: var(--space-12);
     }
 
-    .icon-btn {
+    .title-text {
+      font-size: var(--font-size-sm);
+      color: var(--text-tertiary);
+      user-select: none;
+    }
+
+    /* Provider Status Pill */
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: var(--space-8);
+      padding: var(--space-4) var(--space-12);
+      background: var(--panel-muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      font-size: var(--font-size-xs);
+      color: var(--text-secondary);
       -webkit-app-region: no-drag;
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      border: none;
-      background: transparent;
-      color: rgba(255, 255, 255, 0.6);
-      cursor: pointer;
+      user-select: none;
+    }
+
+    .provider-icon {
+      width: 14px;
+      height: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
+      font-size: 12px;
+    }
+
+    .provider-name {
+      font-weight: 500;
+    }
+
+    .model-name {
+      color: var(--text-tertiary);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    /* Mode Select */
+    .mode-select {
+      padding: var(--space-4) var(--space-8);
+      background: var(--panel-muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: var(--font-size-xs);
+      font-family: var(--font-family);
+      cursor: pointer;
+      transition: all var(--duration-quick) var(--easing);
+      -webkit-app-region: no-drag;
+      outline: none;
+    }
+
+    .mode-select:hover {
+      background: var(--panel);
+      border-color: var(--border-strong);
+    }
+
+    .mode-select:focus {
+      box-shadow: var(--focus-ring);
+    }
+
+    .mode-select option {
+      background: var(--panel-strong);
+      color: var(--text-primary);
+    }
+
+    /* Icon Buttons */
+    .icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--duration-quick) var(--easing);
+      -webkit-app-region: no-drag;
     }
 
     .icon-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: rgba(255, 255, 255, 0.9);
+      background: var(--panel-muted);
+      color: var(--text-primary);
     }
 
-    .icon-btn.close:hover {
-      background: rgba(255, 74, 74, 0.3);
-      color: #ff4a4a;
+    .icon-btn:active {
+      transform: scale(0.95);
+    }
+
+    .icon-btn:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .icon-btn.close-btn:hover {
+      background: var(--danger);
+      color: white;
     }
 
     /* Messages Container */
     .messages-container {
       flex: 1;
       overflow-y: auto;
-      padding: 20px;
       display: flex;
-      flex-direction: column;
-      gap: 16px;
+      justify-content: center;
+      padding: var(--space-16) var(--space-12);
     }
 
     .messages-container::-webkit-scrollbar {
@@ -111,41 +202,73 @@
     }
 
     .messages-container::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
+      background: var(--border-strong);
+      border-radius: var(--radius-sm);
     }
 
     .messages-container::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.3);
+      background: var(--text-tertiary);
+    }
+
+    /* Chat Wrapper (max-width constraint) */
+    .chat-wrapper {
+      width: 100%;
+      max-width: var(--chat-max-width);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-12);
     }
 
     /* Message Bubbles */
     .message {
-      max-width: 85%;
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.5;
+      padding: var(--space-12) var(--space-16);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-base);
+      line-height: var(--line-height);
       word-wrap: break-word;
+      position: relative;
     }
 
     .message.user {
       align-self: flex-end;
-      background: rgba(74, 158, 255, 0.2);
-      border: 1px solid rgba(74, 158, 255, 0.3);
+      background: #0377fc;
+      border: 1px solid #000000;
+      border-radius: 18px;
+      border-bottom-right-radius: 4px;
+      max-width: 65%;
       margin-left: auto;
+      text-align: left;
+      padding: var(--space-12) var(--space-16);
+      color: white;
     }
 
     .message.ai {
       align-self: flex-start;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: transparent;
+      border: none;
+      width: 85%;
+      padding: var(--space-8) 0;
     }
 
     .message-meta {
-      font-size: 11px;
-      opacity: 0.5;
-      margin-top: 4px;
+      font-size: var(--font-size-xs);
+      color: var(--text-tertiary);
+      margin-top: var(--space-4);
+      margin-bottom: var(--space-8);
+      margin-left: auto;
+      display: block;
+      text-align: right;
+      max-width: 65%;
+      padding-right: 4px;
+    }
+
+    /* Message timestamp (always visible) */
+    .message-timestamp {
+      font-size: var(--font-size-xs);
+      color: var(--text-tertiary);
+      margin-top: var(--space-8);
+      display: block;
+      opacity: 0.7;
     }
 
     /* Empty State */
@@ -170,86 +293,142 @@
 
     /* Input Area */
     .input-area {
-      padding: 16px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(0, 0, 0, 0.2);
+      padding: var(--space-16);
+      border-top: 1px solid var(--border);
+      background: var(--panel-muted);
     }
 
     .input-container {
       display: flex;
       align-items: center;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
-      padding: 8px 12px;
+      gap: var(--space-8);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-8) var(--space-12);
     }
 
     .input-container:focus-within {
-      border-color: rgba(74, 158, 255, 0.5);
+      border-color: var(--accent);
+      box-shadow: var(--focus-ring);
     }
 
-    #screenshot-btn {
+    /* Input area icon buttons */
+    .icon-btn-input {
       flex-shrink: 0;
       width: 32px;
       height: 32px;
       border: none;
       background: transparent;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--text-tertiary);
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
+      transition: all var(--duration-quick) var(--easing);
+      padding: 0;
     }
 
-    #screenshot-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: rgba(255, 255, 255, 0.8);
+    .icon-btn-input:hover {
+      background: var(--panel-muted);
+      color: var(--text-primary);
     }
 
-    #screenshot-btn.active {
-      background: rgba(74, 158, 255, 0.3);
-      color: #4A9EFF;
+    .icon-btn-input.active {
+      background: var(--accent-muted);
+      color: var(--accent);
+    }
+
+    .icon-btn-input:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
     }
 
     #message-input {
       flex: 1;
       background: transparent;
       border: none;
-      color: white;
-      font-size: 14px;
+      color: var(--text-primary);
+      font-size: var(--font-size-base);
+      font-family: var(--font-family);
       outline: none;
-      font-family: inherit;
+      box-shadow: none !important;
+    }
+
+    #message-input:focus {
+      outline: none;
+      box-shadow: none;
+      border: none;
     }
 
     #message-input::placeholder {
-      color: rgba(255, 255, 255, 0.4);
+      color: var(--text-tertiary);
     }
 
-    #send-btn {
+    /* Mode select in input */
+    .mode-select-input {
+      flex-shrink: 0;
+      padding: var(--space-4) var(--space-12);
+      background: var(--panel-muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: var(--font-size-sm);
+      font-family: var(--font-family);
+      cursor: pointer;
+      transition: all var(--duration-quick) var(--easing);
+      outline: none;
+    }
+
+    .mode-select-input:hover {
+      background: var(--panel-strong);
+      border-color: var(--border-strong);
+    }
+
+    .mode-select-input:focus {
+      box-shadow: var(--focus-ring);
+    }
+
+    .mode-select-input option {
+      background: var(--panel-strong);
+      color: var(--text-primary);
+    }
+
+    /* Send button */
+    .send-btn-input {
       flex-shrink: 0;
       width: 32px;
       height: 32px;
       border: none;
-      background: #4A9EFF;
+      background: var(--accent);
       color: white;
       cursor: pointer;
-      border-radius: 6px;
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
+      transition: all var(--duration-quick) var(--easing);
+      padding: 0;
     }
 
-    #send-btn:hover:not(:disabled) {
-      background: #3A8EEF;
+    .send-btn-input:hover:not(:disabled) {
+      background: var(--accent-strong);
     }
 
-    #send-btn:disabled {
-      background: rgba(74, 158, 255, 0.3);
+    .send-btn-input:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .send-btn-input:disabled {
+      background: var(--accent-muted);
       cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .send-btn-input:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
     }
 
     /* SVG Icons */
@@ -297,63 +476,97 @@
 
     /* Code blocks */
     pre {
-      margin: 12px 0;
-      border-radius: 6px;
+      margin: var(--space-12) 0;
+      border-radius: var(--radius-md);
       overflow: hidden;
       position: relative;
-      background: rgba(0, 0, 0, 0.4) !important;
+      background: var(--panel-strong) !important;
+      border: 1px solid var(--border);
     }
 
     pre code {
       display: block;
-      padding: 16px;
+      padding: var(--space-16);
+      padding-top: calc(var(--space-16) + 28px); /* Extra space for language label */
       overflow-x: auto;
-      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-      font-size: 13px;
-      line-height: 1.5;
+      font-family: var(--font-family-mono);
+      font-size: var(--font-size-code);
+      line-height: var(--line-height);
       background: transparent !important;
+      color: var(--text-primary);
     }
 
     /* Inline code */
     code {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--panel-strong);
       padding: 2px 6px;
-      border-radius: 3px;
-      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      font-family: var(--font-family-mono);
       font-size: 0.9em;
+      color: var(--accent-strong);
     }
 
-    /* Code block wrapper for copy button */
+    /* Code block wrapper for copy button and language label */
     .code-block-wrapper {
       position: relative;
+      margin: var(--space-12) 0;
     }
 
+    /* Language label */
+    .code-lang-label {
+      position: absolute;
+      top: var(--space-8);
+      left: var(--space-12);
+      font-size: var(--font-size-xs);
+      font-family: var(--font-family-mono);
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      z-index: 1;
+    }
+
+    /* Copy button (icon only) */
     .copy-code-btn {
       position: absolute;
-      top: 8px;
-      right: 8px;
-      padding: 4px 8px;
-      background: rgba(74, 158, 255, 0.3);
-      border: 1px solid rgba(74, 158, 255, 0.5);
-      border-radius: 4px;
-      color: white;
-      font-size: 11px;
+      top: var(--space-8);
+      right: var(--space-8);
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      background: var(--panel-muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
       cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.2s, background 0.2s;
+      opacity: 1; /* Always visible */
+      transition: all var(--duration-quick) var(--easing);
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .code-block-wrapper:hover .copy-code-btn {
-      opacity: 1;
+    .copy-code-btn svg {
+      width: 16px;
+      height: 16px;
     }
 
     .copy-code-btn:hover {
-      background: rgba(74, 158, 255, 0.5);
+      background: var(--accent-muted);
+      border-color: var(--accent);
+      color: var(--accent-strong);
+    }
+
+    .copy-code-btn:active {
+      transform: scale(0.95);
     }
 
     .copy-code-btn.copied {
-      background: rgba(76, 175, 80, 0.5);
-      border-color: rgba(76, 175, 80, 0.7);
+      background: rgba(93, 211, 158, 0.2);
+      border-color: var(--success);
+      color: var(--success);
     }
 
     /* Markdown elements in messages */
@@ -469,45 +682,32 @@
       }
     }
 
-    /* Message copy button */
-    .message.ai {
-      position: relative;
-    }
-
+    /* Message copy button - positioned at bottom */
     .message-copy-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: var(--space-8);
       padding: 4px 8px;
-      background: rgba(74, 158, 255, 0.3);
-      border: 1px solid rgba(74, 158, 255, 0.5);
-      border-radius: 4px;
-      color: white;
-      font-size: 11px;
+      background: rgba(74, 158, 255, 0.15);
+      border: 1px solid rgba(74, 158, 255, 0.4);
+      border-radius: var(--radius-sm);
+      color: rgba(74, 158, 255, 0.9);
+      font-size: var(--font-size-xs);
       cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.2s, background 0.2s;
-    }
-
-    .message.ai:hover .message-copy-btn {
-      opacity: 1;
+      transition: all var(--duration-quick) var(--easing);
     }
 
     .message-copy-btn:hover {
-      background: rgba(74, 158, 255, 0.5);
+      background: rgba(74, 158, 255, 0.25);
+      border-color: rgba(74, 158, 255, 0.6);
+      color: #4A9EFF;
     }
 
     .message-copy-btn.copied {
-      background: rgba(76, 175, 80, 0.5);
-      border-color: rgba(76, 175, 80, 0.7);
-    }
-
-    /* Message timestamp */
-    .message-timestamp {
-      font-size: 10px;
-      opacity: 0.4;
-      margin-top: 6px;
-      display: block;
+      background: rgba(93, 211, 158, 0.2);
+      border-color: var(--success);
+      color: var(--success);
     }
   </style>
 </head>
@@ -516,44 +716,46 @@
     <!-- Title Bar -->
     <div class="title-bar">
       <div class="title-bar-left">
-        <button id="home-btn" class="icon-btn" title="Settings">
-          <svg class="icon-svg" viewBox="0 0 24 24">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-          </svg>
+        <!-- Settings Button -->
+        <button id="home-btn" class="icon-btn" title="Settings" aria-label="Open Settings">
+          <!-- Icon loaded from custom-icons/settings.svg -->
         </button>
-        <span style="font-size: 12px; opacity: 0.6;">GhostPad</span>
-        <select
-          id="mode-dropdown"
-          style="-webkit-app-region: no-drag; margin-left: 12px; padding: 4px 8px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; color: rgba(255, 255, 255, 0.8); font-size: 11px; cursor: pointer; outline: none;"
-          title="Switch System Prompt Mode"
-        >
-          <option value="default">Default</option>
-        </select>
+
+        <!-- App Title -->
+        <span class="title-text">GhostPad</span>
+
+        <!-- Provider Status Pill -->
+        <div class="status-pill" id="provider-status">
+          <span class="provider-icon" id="provider-icon"><!-- Icon loaded dynamically --></span>
+          <span class="provider-name" id="provider-name">Gemini</span>
+          <span class="model-name" id="model-name">2.5 Flash</span>
+          <span class="status-dot" id="status-dot"></span>
+        </div>
       </div>
+
       <div class="title-bar-right">
-        <button id="close-btn" class="icon-btn close" title="Close">
-          <svg class="icon-svg" viewBox="0 0 24 24">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-          </svg>
+        <!-- Close Button -->
+        <button id="close-btn" class="icon-btn close-btn" title="Close" aria-label="Close application">
+          <!-- Icon loaded from custom-icons/close.svg -->
         </button>
       </div>
     </div>
 
     <!-- Messages Container -->
     <div id="messages-container" class="messages-container">
-      <div class="empty-state">
-        <h2>Welcome to GhostPad</h2>
-        <p>Capture your screen and ask questions</p>
+      <div class="chat-wrapper" id="chat-wrapper">
+        <div class="empty-state">
+          <h2>Welcome to GhostPad</h2>
+          <p>Capture your screen and ask questions</p>
+        </div>
       </div>
     </div>
 
     <!-- Input Area -->
     <div class="input-area">
       <div class="input-container">
-        <button id="screenshot-btn" title="Capture Screen">
-          <svg class="icon-svg" viewBox="0 0 24 24">
-            <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-          </svg>
+        <button id="screenshot-btn" class="icon-btn-input" title="Capture Screen" aria-label="Capture Screen">
+          <!-- Icon loaded from custom-icons/camera.svg -->
         </button>
         <input
           type="text"
@@ -561,15 +763,21 @@
           placeholder="Ask about your screen or conversation, or ↩ for Assist"
           autocomplete="off"
         />
-        <button id="send-btn" title="Send">
-          <svg class="icon-svg" viewBox="0 0 24 24">
-            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-          </svg>
+        <select
+          id="mode-dropdown-input"
+          class="mode-select-input"
+          title="Switch System Prompt Mode"
+          aria-label="System Prompt Mode"
+        >
+          <option value="default">Default</option>
+        </select>
+        <button id="send-btn" class="send-btn-input" title="Send" aria-label="Send message">
+          <!-- Icon loaded from custom-icons/send.svg -->
         </button>
       </div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

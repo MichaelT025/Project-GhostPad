@@ -3,6 +3,8 @@
  * Handles provider configuration, API keys, and preferences
  */
 
+import { getIcon, initIcons } from './assets/icons/icons.js';
+
 // Default system prompt for screenshot analysis
 const DEFAULT_SYSTEM_PROMPT = `
 You're GhostPad, a real time assistant that gives short precise answers. 
@@ -57,19 +59,19 @@ let currentSettings = {
 const providerInfo = {
   gemini: {
     name: 'Google Gemini',
-    icon: '🔷',
+    iconName: 'gemini',
     description: 'Fast and efficient vision model',
     badge: 'Active'
   },
   openai: {
     name: 'OpenAI GPT',
-    icon: '🟢',
+    iconName: 'openai',
     description: 'Powerful multimodal AI',
     badge: 'Available'
   },
   anthropic: {
     name: 'Anthropic Claude',
-    icon: '🟣',
+    iconName: 'anthropic',
     description: 'Advanced reasoning capabilities',
     badge: 'Available'
   }
@@ -80,6 +82,9 @@ const providerInfo = {
  */
 async function init() {
   console.log('Initializing settings window...')
+
+  // Initialize custom icons
+  await initIcons()
 
   // Load current settings
   await loadSettings()
@@ -266,8 +271,9 @@ function updateProviderUI() {
   // Update provider info box
   const info = providerInfo[provider]
   const providerInfoEl = document.getElementById('current-provider-info')
+  const iconSvg = getIcon(info.iconName, 'icon-svg')
   providerInfoEl.innerHTML = `
-    <div class="provider-icon">${info.icon}</div>
+    <div class="provider-icon">${iconSvg}</div>
     <div class="provider-details">
       <div class="provider-name">${info.name} <span class="provider-badge active">${info.badge}</span></div>
       <div class="provider-status">${info.description}</div>

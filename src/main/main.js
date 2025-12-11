@@ -1,5 +1,6 @@
 const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron')
 const path = require('path')
+const fs = require('fs').promises
 const { captureAndCompress } = require('../services/screen-capture')
 const LLMFactory = require('../services/llm-factory')
 const ConfigService = require('../services/config-service')
@@ -25,8 +26,9 @@ function createMainWindow() {
     },
   })
 
-  // Exclude this window from screen capture (Windows 10 v2004+)
-  mainWindow.setContentProtection(true)
+  // Allow window in system screenshots by default (PrtSc, etc.)
+  // Content protection will be enabled temporarily during app screenshot capture
+  mainWindow.setContentProtection(false)
 
   // Load the renderer
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
@@ -132,8 +134,16 @@ ipcMain.handle('capture-screen', async () => {
   try {
     console.log('Screen capture requested')
 
+    // Temporarily enable content protection to exclude app from this capture
+    if (mainWindow) {
+      mainWindow.setContentProtection(true)
+    }
+
+    // Small delay to ensure content protection takes effect
+    await new Promise(resolve => setTimeout(resolve, 100))
+
     // Capture and compress the screenshot
-    // The overlay is automatically excluded via setContentProtection(true)
+    // The overlay is now excluded via temporary setContentProtection(true)
     const { base64, size } = await captureAndCompress()
 
     console.log(`Screenshot captured successfully (${(size / 1024 / 1024).toFixed(2)}MB)`)
@@ -149,6 +159,11 @@ ipcMain.handle('capture-screen', async () => {
     return {
       success: false,
       error: error.message
+    }
+  } finally {
+    // Always re-disable content protection so app is visible in system screenshots (PrtSc)
+    if (mainWindow) {
+      mainWindow.setContentProtection(false)
     }
   }
 })
@@ -378,4 +393,34 @@ ipcMain.handle('open-settings', async () => {
 // Quit application
 ipcMain.handle('quit-app', async () => {
   app.quit()
+})
+
+// Load custom icons from directory
+ipcMain.handle('load-custom-icons', async () => {
+  try {
+    const iconsPath = path.join(__dirname, '../renderer/assets/icons/custom-icons')
+    const icons = {}
+
+    // Read all files in custom-icons directory
+    const files = await fs.readdir(iconsPath)
+
+    // Filter for .svg files only
+    const svgFiles = files.filter(file => file.endsWith('.svg'))
+
+    console.log(`Loading ${svgFiles.length} custom icons from ${iconsPath}`)
+
+    // Load each SVG file
+    for (const file of svgFiles) {
+      const filePath = path.join(iconsPath, file)
+      const iconName = file.replace('.svg', '')
+      const svgContent = await fs.readFile(filePath, 'utf-8')
+      icons[iconName] = svgContent
+    }
+
+    console.log(`Loaded custom icons: ${Object.keys(icons).join(', ')}`)
+    return icons
+  } catch (error) {
+    console.error('Failed to load custom icons:', error)
+    return {}
+  }
 })

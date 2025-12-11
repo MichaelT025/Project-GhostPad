@@ -52,6 +52,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openSettings: () => ipcRenderer.invoke('open-settings'),
   quitApp: () => ipcRenderer.invoke('quit-app'),
 
+  // Icon management
+  loadCustomIcons: () => ipcRenderer.invoke('load-custom-icons'),
+
   // Cleanup listeners
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel)

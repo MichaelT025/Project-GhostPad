@@ -3,21 +3,94 @@
  * Handles message display, screenshot capture, and user interactions
  */
 
+import { getIcon, insertIcon, initIcons } from './assets/icons/icons.js';
+import { createScreenshotChip, formatTimestamp, showToast, copyToClipboard } from './utils/ui-helpers.js';
+
 // State management
 const messages = [] // Chat history array
 let capturedScreenshot = null // Current screenshot base64
+let capturedThumbnail = null // Screenshot thumbnail for preview
 let isScreenshotActive = false // Screenshot button state
 let currentStreamingMessageId = null // ID of currently streaming message
 let accumulatedText = '' // Accumulated text during streaming
 
 // DOM element references
 const messagesContainer = document.getElementById('messages-container')
+let chatWrapper = document.getElementById('chat-wrapper') // Use let for reassignment after new chat
 const messageInput = document.getElementById('message-input')
 const sendBtn = document.getElementById('send-btn')
 const screenshotBtn = document.getElementById('screenshot-btn')
 const homeBtn = document.getElementById('home-btn')
 const closeBtn = document.getElementById('close-btn')
-const modeDropdown = document.getElementById('mode-dropdown')
+const modeDropdownInput = document.getElementById('mode-dropdown-input')
+
+/**
+ * Update provider status pill with current provider and model
+ */
+async function updateProviderStatus() {
+  try {
+    // Get active provider
+    const providerResult = await window.electronAPI.getActiveProvider()
+    const provider = providerResult.provider || 'gemini'
+
+    // Get provider config for model
+    const configResult = await window.electronAPI.getProviderConfig(provider)
+    const config = configResult.config || {}
+    const model = config.model || 'gemini-2.5-flash'
+
+    // Update UI elements
+    const providerIcon = document.getElementById('provider-icon')
+    const providerName = document.getElementById('provider-name')
+    const modelName = document.getElementById('model-name')
+    const statusDot = document.getElementById('status-dot')
+
+    // Set provider icon using SVG
+    const iconName = provider === 'gemini' ? 'gemini' : provider === 'openai' ? 'openai' : 'anthropic';
+    providerIcon.innerHTML = getIcon(iconName, 'icon-svg-sm')
+
+    // Provider name (capitalize first letter)
+    providerName.textContent = provider.charAt(0).toUpperCase() + provider.slice(1)
+
+    // Model name (shortened versions)
+    const modelShortNames = {
+      'gemini-3.0-pro': '3.0 Pro',
+      'gemini-3.0-deep-think': '3.0 Think',
+      'gemini-2.5-pro': '2.5 Pro',
+      'gemini-2.5-flash': '2.5 Flash',
+      'gemini-2.5-flash-lite': '2.5 Lite',
+      'gemini-2.0-flash': '2.0 Flash',
+      'gemini-1.5-pro': '1.5 Pro',
+      'gemini-1.5-flash': '1.5 Flash',
+      'gpt-5.1': 'GPT-5.1',
+      'gpt-5.1-chat': '5.1 Chat',
+      'gpt-5-mini': '5 Mini',
+      'gpt-4.1': 'GPT-4.1',
+      'gpt-4.1-mini': '4.1 Mini',
+      'gpt-4o': 'GPT-4o',
+      'gpt-4o-mini': '4o Mini',
+      'claude-opus-4-5': 'Opus 4.5',
+      'claude-sonnet-4-5': 'Sonnet 4.5',
+      'claude-haiku-4-5': 'Haiku 4.5',
+      'claude-opus-4-1': 'Opus 4.1',
+      'claude-sonnet-4': 'Sonnet 4'
+    }
+    modelName.textContent = modelShortNames[model] || model.split('-').slice(0, 2).join(' ')
+
+    // Green status dot indicates connected
+    statusDot.style.background = 'var(--success)'
+    statusDot.style.boxShadow = '0 0 8px var(--success)'
+
+    console.log('Provider status updated:', { provider, model })
+  } catch (error) {
+    console.error('Failed to update provider status:', error)
+    // Red dot for error
+    const statusDot = document.getElementById('status-dot')
+    if (statusDot) {
+      statusDot.style.background = 'var(--danger)'
+      statusDot.style.boxShadow = '0 0 8px var(--danger)'
+    }
+  }
+}
 
 /**
  * Initialize the application
@@ -60,7 +133,7 @@ async function init() {
   })
 
   // Mode dropdown - switch active mode
-  modeDropdown.addEventListener('change', handleModeSwitch)
+  modeDropdownInput.addEventListener('change', handleModeSwitch)
 
   // Ctrl+R new chat handler
   window.electronAPI.onNewChat(handleNewChat)
@@ -70,8 +143,20 @@ async function init() {
   window.electronAPI.onMessageComplete(handleMessageComplete)
   window.electronAPI.onMessageError(handleMessageError)
 
+  // Initialize custom icons from directory
+  await initIcons()
+
+  // Insert icons into UI elements
+  insertIcon(homeBtn, 'settings', 'icon-svg')
+  insertIcon(closeBtn, 'close', 'icon-svg')
+  insertIcon(screenshotBtn, 'camera', 'icon-svg')
+  insertIcon(sendBtn, 'send', 'icon-svg')
+
   // Load modes and populate dropdown
   await loadModes()
+
+  // Update provider status pill
+  await updateProviderStatus()
 
   // Auto-focus the input field so keyboard shortcuts work immediately
   messageInput.focus()
@@ -89,17 +174,70 @@ async function handleScreenshotCapture() {
 
     if (result.success) {
       capturedScreenshot = result.base64
+      capturedThumbnail = result.thumbnail || result.base64 // Use thumbnail if available
       screenshotBtn.classList.add('active')
       isScreenshotActive = true
+      
+      // Show screenshot chip preview
+      // showScreenshotChip(capturedThumbnail)
+      
+      // Update input placeholder
+      messageInput.placeholder = 'Ask about the captured screen...'
+      
       console.log('Screenshot captured and attached')
+      // showToast('Screenshot captured', 'success', 2000)
     } else {
       console.error('Screenshot capture failed:', result.error)
-      showError('Failed to capture screenshot')
+      showToast('Failed to capture screenshot: ' + result.error, 'error')
     }
   } catch (error) {
     console.error('Screenshot error:', error)
-    showError('Screenshot error: ' + error.message)
+    showToast('Screenshot error: ' + error.message, 'error')
   }
+}
+
+/**
+ * Show screenshot chip preview
+ */
+function showScreenshotChip(thumbnailBase64) {
+  // Remove existing chip if any
+  const existingChip = document.getElementById('screenshot-chip')
+  if (existingChip) {
+    existingChip.remove()
+  }
+  
+  // Create and insert new chip
+  // const chip = createScreenshotChip(thumbnailBase64)
+  // const inputArea = document.querySelector('.input-area')
+  // const inputContainer = document.querySelector('.input-container')
+  // inputArea.insertBefore(chip, inputContainer)
+  
+  // Add remove button handler
+  // const removeBtn = document.getElementById('screenshot-remove')
+  // removeBtn.addEventListener('click', removeScreenshot)
+}
+
+/**
+ * Remove screenshot
+ */
+function removeScreenshot() {
+  capturedScreenshot = null
+  capturedThumbnail = null
+  isScreenshotActive = false
+  
+  // Remove chip
+  const chip = document.getElementById('screenshot-chip')
+  if (chip) {
+    chip.remove()
+  }
+  
+  // Reset button state
+  screenshotBtn.classList.remove('active')
+  
+  // Reset placeholder
+  messageInput.placeholder = 'Ask about your screen or conversation, or ↩ for Assist'
+  
+  console.log('Screenshot removed')
 }
 
 /**
@@ -153,10 +291,8 @@ async function handleSendMessage() {
     console.error('Send message error:', error)
     showError('Error: ' + error.message)
   } finally {
-    // Reset state
-    capturedScreenshot = null
-    screenshotBtn.classList.remove('active')
-    isScreenshotActive = false
+    // Clear screenshot after sending
+    removeScreenshot()
 
     // Re-enable input
     sendBtn.disabled = false
@@ -237,22 +373,18 @@ function addMessage(type, text, hasScreenshot = false) {
   messageEl.className = `message ${type}`
   messageEl.textContent = text
 
-  // Add screenshot indicator for user messages with screenshots
+  // Add to container
+  chatWrapper.appendChild(messageEl)
+  
+  // Add screenshot indicator BELOW the user message bubble (as separate element)
   if (hasScreenshot && type === 'user') {
     const meta = document.createElement('div')
     meta.className = 'message-meta'
     meta.textContent = 'Sent with screenshot'
-    messageEl.appendChild(meta)
+    chatWrapper.appendChild(meta)
   }
-
-  // Add timestamp
-  const timestamp = document.createElement('span')
-  timestamp.className = 'message-timestamp'
-  timestamp.textContent = formatTimestamp(new Date())
-  messageEl.appendChild(timestamp)
-
-  // Add to container and scroll to bottom
-  messagesContainer.appendChild(messageEl)
+  
+  // Scroll to bottom
   messagesContainer.scrollTop = messagesContainer.scrollHeight
 
   // Store in message history
@@ -281,7 +413,7 @@ function addLoadingMessage() {
 
   loadingEl.appendChild(typingIndicator)
 
-  messagesContainer.appendChild(loadingEl)
+  chatWrapper.appendChild(loadingEl)
   messagesContainer.scrollTop = messagesContainer.scrollHeight
 
   return loadingId
@@ -326,7 +458,7 @@ function addStreamingMessage(text) {
   cursorEl.className = 'streaming-cursor'
   messageEl.appendChild(cursorEl)
 
-  messagesContainer.appendChild(messageEl)
+  chatWrapper.appendChild(messageEl)
   messagesContainer.scrollTop = messagesContainer.scrollHeight
 
   return messageId
@@ -381,14 +513,8 @@ function finalizeStreamingMessage(messageId, text) {
     // Add copy buttons to code blocks
     addCopyButtons(messageEl)
 
-    // Add copy button to message
+    // Add copy button to message (at bottom)
     addMessageCopyButton(messageEl, text)
-
-    // Add timestamp
-    const timestamp = document.createElement('span')
-    timestamp.className = 'message-timestamp'
-    timestamp.textContent = formatTimestamp(new Date())
-    messageEl.appendChild(timestamp)
 
     // Store in message history
     messages.push({ type: 'ai', text, hasScreenshot: false, timestamp: new Date() })
@@ -396,7 +522,7 @@ function finalizeStreamingMessage(messageId, text) {
 }
 
 /**
- * Add copy buttons to all code blocks in a message
+ * Add copy buttons and language labels to all code blocks in a message
  * @param {HTMLElement} messageElement - Message element containing code blocks
  */
 function addCopyButtons(messageElement) {
@@ -405,30 +531,80 @@ function addCopyButtons(messageElement) {
   codeBlocks.forEach(codeBlock => {
     const pre = codeBlock.parentElement
 
+    // Detect language from class attribute (e.g., "language-javascript" or "hljs javascript")
+    let language = 'code'
+    const classList = Array.from(codeBlock.classList)
+    for (const className of classList) {
+      if (className.startsWith('language-')) {
+        language = className.replace('language-', '')
+        break
+      } else if (className.startsWith('hljs') && className !== 'hljs') {
+        // highlight.js adds classes like "hljs javascript"
+        const match = className.match(/^(\w+)$/)
+        if (match && match[1] !== 'hljs') {
+          language = match[1]
+          break
+        }
+      }
+    }
+    // Also check next sibling classes for highlight.js
+    if (language === 'code' && classList.length > 1) {
+      const secondClass = classList[1]
+      if (secondClass && secondClass !== 'hljs') {
+        language = secondClass
+      }
+    }
+
     // Wrap in container for positioning
     const wrapper = document.createElement('div')
     wrapper.className = 'code-block-wrapper'
     pre.parentNode.insertBefore(wrapper, pre)
     wrapper.appendChild(pre)
 
-    // Create copy button
+    // Add language label
+    const langLabel = document.createElement('span')
+    langLabel.className = 'code-lang-label'
+    langLabel.textContent = language
+    wrapper.appendChild(langLabel)
+
+    // Create copy button with icon
     const copyBtn = document.createElement('button')
     copyBtn.className = 'copy-code-btn'
-    copyBtn.textContent = 'Copy'
+    copyBtn.title = 'Copy code'
+    copyBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
+      </svg>
+    `
     copyBtn.addEventListener('click', () => {
       const code = codeBlock.textContent
       navigator.clipboard.writeText(code).then(() => {
-        copyBtn.textContent = 'Copied!'
+        copyBtn.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        `
         copyBtn.classList.add('copied')
+        copyBtn.title = 'Copied!'
         setTimeout(() => {
-          copyBtn.textContent = 'Copy'
+          copyBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
+            </svg>
+          `
           copyBtn.classList.remove('copied')
+          copyBtn.title = 'Copy code'
         }, 2000)
       }).catch(err => {
         console.error('Failed to copy code:', err)
-        copyBtn.textContent = 'Failed'
+        copyBtn.title = 'Failed to copy'
         setTimeout(() => {
-          copyBtn.textContent = 'Copy'
+          copyBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/>
+            </svg>
+          `
+          copyBtn.title = 'Copy code'
         }, 2000)
       })
     })
@@ -486,17 +662,19 @@ function showError(errorText) {
   const errorType = categorizeError(errorText)
   const errorEl = document.createElement('div')
   errorEl.className = 'message ai'
-  errorEl.style.borderColor = 'rgba(255, 74, 74, 0.3)'
-  errorEl.style.background = 'rgba(255, 74, 74, 0.1)'
+  errorEl.style.borderColor = 'var(--danger)'
+  errorEl.style.background = 'rgba(255, 107, 107, 0.1)'
   errorEl.style.position = 'relative'
 
   // Create error content
   const errorContent = document.createElement('div')
   errorContent.style.paddingRight = '80px' // Make room for action button
 
-  const errorIcon = document.createElement('span')
-  errorIcon.textContent = '⚠️ '
-  errorContent.appendChild(errorIcon)
+  const errorIconContainer = document.createElement('span')
+  errorIconContainer.innerHTML = getIcon('error', 'icon-svg-sm')
+  errorIconContainer.style.marginRight = '8px'
+  errorIconContainer.style.color = 'var(--danger)'
+  errorContent.appendChild(errorIconContainer)
 
   const errorMessage = document.createElement('span')
   errorMessage.textContent = getErrorMessage(errorType)
@@ -505,26 +683,37 @@ function showError(errorText) {
   // Add technical details (collapsible)
   if (errorText !== getErrorMessage(errorType)) {
     const detailsToggle = document.createElement('div')
-    detailsToggle.style.fontSize = '11px'
-    detailsToggle.style.opacity = '0.6'
-    detailsToggle.style.marginTop = '6px'
+    detailsToggle.className = 'text-xs text-tertiary'
+    detailsToggle.style.marginTop = 'var(--space-8)'
     detailsToggle.style.cursor = 'pointer'
-    detailsToggle.textContent = 'Show details'
+    detailsToggle.style.display = 'flex'
+    detailsToggle.style.alignItems = 'center'
+    detailsToggle.style.gap = 'var(--space-4)'
+    
+    const chevronIcon = document.createElement('span')
+    chevronIcon.innerHTML = getIcon('chevronDown', 'icon-svg-sm')
+    detailsToggle.appendChild(chevronIcon)
+    
+    const toggleText = document.createElement('span')
+    toggleText.textContent = 'Show details'
+    detailsToggle.appendChild(toggleText)
 
     const detailsContent = document.createElement('div')
-    detailsContent.style.fontSize = '11px'
-    detailsContent.style.opacity = '0.6'
-    detailsContent.style.marginTop = '6px'
+    detailsContent.className = 'text-xs text-tertiary'
+    detailsContent.style.marginTop = 'var(--space-8)'
     detailsContent.style.display = 'none'
+    detailsContent.style.fontFamily = 'var(--font-family-mono)'
     detailsContent.textContent = errorText
 
     detailsToggle.addEventListener('click', () => {
       if (detailsContent.style.display === 'none') {
         detailsContent.style.display = 'block'
-        detailsToggle.textContent = 'Hide details'
+        chevronIcon.innerHTML = getIcon('chevronUp', 'icon-svg-sm')
+        toggleText.textContent = 'Hide details'
       } else {
         detailsContent.style.display = 'none'
-        detailsToggle.textContent = 'Show details'
+        chevronIcon.innerHTML = getIcon('chevronDown', 'icon-svg-sm')
+        toggleText.textContent = 'Show details'
       }
     })
 
@@ -537,49 +726,36 @@ function showError(errorText) {
   // Add action button based on error type
   if (errorType === 'API_KEY') {
     const settingsBtn = document.createElement('button')
-    settingsBtn.textContent = 'Settings'
+    settingsBtn.innerHTML = getIcon('settings', 'icon-svg-sm')
     settingsBtn.style.position = 'absolute'
-    settingsBtn.style.top = '12px'
-    settingsBtn.style.right = '12px'
-    settingsBtn.style.padding = '4px 12px'
-    settingsBtn.style.background = 'rgba(74, 158, 255, 0.3)'
-    settingsBtn.style.border = '1px solid rgba(74, 158, 255, 0.5)'
-    settingsBtn.style.borderRadius = '4px'
-    settingsBtn.style.color = 'white'
-    settingsBtn.style.fontSize = '11px'
+    settingsBtn.style.top = 'var(--space-12)'
+    settingsBtn.style.right = 'var(--space-12)'
+    settingsBtn.style.padding = 'var(--space-4) var(--space-12)'
+    settingsBtn.style.background = 'var(--accent-muted)'
+    settingsBtn.style.border = '1px solid var(--accent)'
+    settingsBtn.style.borderRadius = 'var(--radius-sm)'
+    settingsBtn.style.color = 'var(--accent-strong)'
+    settingsBtn.style.fontSize = 'var(--font-size-xs)'
     settingsBtn.style.cursor = 'pointer'
+    settingsBtn.style.display = 'flex'
+    settingsBtn.style.alignItems = 'center'
+    settingsBtn.style.gap = 'var(--space-4)'
     settingsBtn.addEventListener('click', () => {
       window.electronAPI.openSettings()
     })
     errorEl.appendChild(settingsBtn)
   }
 
-  messagesContainer.appendChild(errorEl)
+  chatWrapper.appendChild(errorEl)
   messagesContainer.scrollTop = messagesContainer.scrollHeight
+  
+  // Also show toast notification
+  showToast(getErrorMessage(errorType), 'error')
 }
 
 /**
- * Format timestamp with relative time
- * @param {Date} date - Message timestamp
- * @returns {string} - Formatted timestamp
+ * Note: formatTimestamp is now imported from ui-helpers.js
  */
-function formatTimestamp(date) {
-  const now = new Date()
-  const diffMs = now - date
-  const diffMins = Math.floor(diffMs / 60000)
-
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-
-  const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-
-  // For older messages, show time
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 /**
  * Add copy button to AI message
@@ -589,22 +765,22 @@ function formatTimestamp(date) {
 function addMessageCopyButton(messageElement, originalText) {
   const copyBtn = document.createElement('button')
   copyBtn.className = 'message-copy-btn'
-  copyBtn.textContent = 'Copy'
-  copyBtn.addEventListener('click', () => {
-    navigator.clipboard.writeText(originalText).then(() => {
-      copyBtn.textContent = 'Copied!'
+  copyBtn.innerHTML = getIcon('copy', 'icon-svg-sm')
+  copyBtn.title = 'Copy message'
+  
+  copyBtn.addEventListener('click', async () => {
+    const success = await copyToClipboard(originalText)
+    if (success) {
+      copyBtn.innerHTML = getIcon('check', 'icon-svg-sm')
       copyBtn.classList.add('copied')
+      showToast('Message copied', 'success', 1500)
       setTimeout(() => {
-        copyBtn.textContent = 'Copy'
+        copyBtn.innerHTML = getIcon('copy', 'icon-svg-sm')
         copyBtn.classList.remove('copied')
       }, 2000)
-    }).catch(err => {
-      console.error('Failed to copy message:', err)
-      copyBtn.textContent = 'Failed'
-      setTimeout(() => {
-        copyBtn.textContent = 'Copy'
-      }, 2000)
-    })
+    } else {
+      showToast('Failed to copy message', 'error')
+    }
   })
 
   messageElement.appendChild(copyBtn)
@@ -622,11 +798,16 @@ function handleNewChat() {
 
   // Reset UI to empty state
   messagesContainer.innerHTML = `
-    <div class="empty-state">
-      <h2>Welcome to GhostPad</h2>
-      <p>Capture your screen and ask questions</p>
+    <div class="chat-wrapper" id="chat-wrapper">
+      <div class="empty-state">
+        <h2>Welcome to GhostPad</h2>
+        <p>Capture your screen and ask questions</p>
+      </div>
     </div>
   `
+
+  // Re-get chatWrapper reference since we just recreated it
+  chatWrapper = document.getElementById('chat-wrapper')
 
   // Reset screenshot state
   capturedScreenshot = null
@@ -649,16 +830,16 @@ async function loadModes() {
     const activeModeId = activeModeResult.modeId || 'default'
 
     // Populate mode dropdown
-    modeDropdown.innerHTML = ''
+    modeDropdownInput.innerHTML = ''
     modes.forEach(mode => {
       const option = document.createElement('option')
       option.value = mode.id
       option.textContent = mode.name
-      modeDropdown.appendChild(option)
+      modeDropdownInput.appendChild(option)
     })
 
     // Select the active mode
-    modeDropdown.value = activeModeId
+    modeDropdownInput.value = activeModeId
 
     console.log('Modes loaded:', { count: modes.length, active: activeModeId })
   } catch (error) {
@@ -675,6 +856,10 @@ async function handleModeSwitch(event) {
   try {
     // Set active mode in config
     await window.electronAPI.setActiveMode(modeId)
+
+    // Update dropdown
+    modeDropdownInput.value = modeId
+
     console.log('Switched to mode:', modeId)
   } catch (error) {
     console.error('Failed to switch mode:', error)

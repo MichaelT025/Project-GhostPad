@@ -1,0 +1,277 @@
+/**
+ * GhostPad Typography System
+ *
+ * Establishes consistent typography across the application using
+ * Space Grotesk for UI text and JetBrains Mono for code.
+ *
+ * Based on design tokens from tokens.css
+ */
+
+/* ========================================
+   BASE TYPOGRAPHY
+   ======================================== */
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ========================================
+   HEADINGS
+   ======================================== */
+
+h1, .h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-12) 0;
+}
+
+h2, .h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-8) 0;
+}
+
+h3, .h3 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-8) 0;
+}
+
+/* ========================================
+   PARAGRAPHS & TEXT
+   ======================================== */
+
+p {
+  margin: 0 0 var(--space-12) 0;
+  color: var(--text-primary);
+}
+
+p:last-child {
+  margin-bottom: 0;
+}
+
+strong, b {
+  font-weight: var(--font-weight-semibold);
+}
+
+em, i {
+  font-style: italic;
+}
+
+small {
+  font-size: var(--font-size-sm);
+}
+
+/* ========================================
+   LINKS
+   ======================================== */
+
+a {
+  color: var(--accent-strong);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--duration-quick) var(--easing);
+}
+
+a:hover {
+  border-bottom-color: var(--accent-strong);
+}
+
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 2px;
+}
+
+/* ========================================
+   CODE & MONOSPACE
+   ======================================== */
+
+code, kbd, samp {
+  font-family: var(--font-family-mono);
+  font-size: 0.9em;
+}
+
+/* Inline code */
+code {
+  padding: 2px 6px;
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--accent-strong);
+}
+
+/* Code blocks (will be styled separately in message content) */
+pre {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-code);
+  line-height: var(--line-height-code);
+}
+
+pre code {
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+}
+
+/* Keyboard key */
+kbd {
+  padding: 2px 6px;
+  background: var(--panel-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   LISTS
+   ======================================== */
+
+ul, ol {
+  margin: 0 0 var(--space-12) 0;
+  padding-left: var(--space-20);
+}
+
+li {
+  margin: var(--space-4) 0;
+  line-height: var(--line-height);
+}
+
+ul ul, ol ol, ul ol, ol ul {
+  margin-bottom: 0;
+}
+
+/* ========================================
+   BLOCKQUOTES
+   ======================================== */
+
+blockquote {
+  margin: var(--space-16) 0;
+  padding-left: var(--space-16);
+  border-left: 3px solid var(--accent);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* ========================================
+   HORIZONTAL RULES
+   ======================================== */
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--space-24) 0;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.text-xs {
+  font-size: var(--font-size-xs);
+}
+
+.text-sm {
+  font-size: var(--font-size-sm);
+}
+
+.text-base {
+  font-size: var(--font-size-base);
+}
+
+.text-lg {
+  font-size: var(--font-size-lg);
+}
+
+.font-normal {
+  font-weight: var(--font-weight-normal);
+}
+
+.font-medium {
+  font-weight: var(--font-weight-medium);
+}
+
+.font-semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+.font-bold {
+  font-weight: var(--font-weight-bold);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+.text-accent {
+  color: var(--accent-strong);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========================================
+   SPECIAL TEXT STYLES
+   ======================================== */
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}

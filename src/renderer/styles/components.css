@@ -1,0 +1,301 @@
+/**
+ * GhostPad Component Styles
+ * Reusable component styles for the application
+ */
+
+/* ========================================
+   SCREENSHOT CHIP
+   ======================================== */
+
+.screenshot-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-8);
+  animation: chipSlideIn var(--duration-normal) var(--easing);
+}
+
+@keyframes chipSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.screenshot-thumbnail {
+  width: 48px;
+  height: 36px;
+  background: var(--panel-muted);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.screenshot-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.screenshot-chip-text {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.screenshot-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--duration-quick) var(--easing);
+  flex-shrink: 0;
+}
+
+.screenshot-remove:hover {
+  background: var(--danger);
+  color: white;
+}
+
+/* ========================================
+   TOAST NOTIFICATIONS
+   ======================================== */
+
+.toast {
+  position: fixed;
+  bottom: var(--space-24);
+  left: var(--space-24);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  background: var(--panel-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elev-2);
+  z-index: var(--z-toast);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all var(--duration-normal) var(--easing);
+  max-width: 400px;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.toast-success {
+  border-color: var(--success);
+}
+
+.toast-success .toast-icon {
+  color: var(--success);
+}
+
+.toast-error {
+  border-color: var(--danger);
+}
+
+.toast-error .toast-icon {
+  color: var(--danger);
+}
+
+.toast-warning {
+  border-color: var(--warning);
+}
+
+.toast-warning .toast-icon {
+  color: var(--warning);
+}
+
+.toast-info {
+  border-color: var(--info);
+}
+
+.toast-info .toast-icon {
+  color: var(--info);
+}
+
+/* ========================================
+   LOADING SPINNER
+   ======================================== */
+
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.spinner-lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+/* ========================================
+   BADGES
+   ======================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.4;
+}
+
+.badge-success {
+  background: rgba(93, 211, 158, 0.2);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.badge-warning {
+  background: rgba(247, 194, 102, 0.2);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+
+.badge-danger {
+  background: rgba(255, 107, 107, 0.2);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.badge-info {
+  background: var(--accent-muted);
+  color: var(--accent-strong);
+  border: 1px solid var(--accent);
+}
+
+/* ========================================
+   SKELETON LOADING
+   ======================================== */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--panel-muted) 0%,
+    var(--panel) 50%,
+    var(--panel-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-text {
+  height: 1em;
+  margin-bottom: var(--space-8);
+}
+
+.skeleton-text:last-child {
+  width: 60%;
+}
+
+/* ========================================
+   EMPTY STATE
+   ======================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-48);
+  opacity: 0.6;
+}
+
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--space-16);
+  color: var(--text-tertiary);
+}
+
+.empty-state h2 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-8);
+}
+
+.empty-state p {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: 0;
+}
+
+/* ========================================
+   DIVIDER
+   ======================================== */
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-16) 0;
+}
+
+.divider-vertical {
+  width: 1px;
+  height: auto;
+  background: var(--border);
+  margin: 0 var(--space-16);
+}
