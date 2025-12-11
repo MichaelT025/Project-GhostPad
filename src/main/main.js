@@ -425,6 +425,49 @@ ipcMain.handle('hide-window', async () => {
   }
 })
 
+// Memory settings IPC handlers
+ipcMain.handle('get-memory-settings', async () => {
+  try {
+    const settings = configService.getMemorySettings()
+    return { success: true, settings }
+  } catch (error) {
+    console.error('Failed to get memory settings:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('get-history-limit', async () => {
+  try {
+    const limit = configService.getHistoryLimit()
+    return { success: true, limit }
+  } catch (error) {
+    console.error('Failed to get history limit:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('set-history-limit', async (_event, limit) => {
+  try {
+    configService.setHistoryLimit(limit)
+    console.log(`History limit set to: ${limit}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to set history limit:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('set-summarization-enabled', async (_event, enabled) => {
+  try {
+    configService.setSummarizationEnabled(enabled)
+    console.log(`Summarization enabled: ${enabled}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to set summarization enabled:', error)
+    return { success: false, error: error.message }
+  }
+})
+
 // Quit application
 ipcMain.handle('quit-app', async () => {
   app.quit()

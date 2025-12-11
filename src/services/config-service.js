@@ -72,7 +72,12 @@ class ConfigService {
           isDefault: true
         }
       ],
-      activeMode: 'default'
+      activeMode: 'default',
+      memorySettings: {
+        historyLimit: 10,
+        enableSummarization: true,
+        summarizationThreshold: 15
+      }
     }
 
     // Load or initialize config
@@ -308,6 +313,81 @@ class ConfigService {
     const modeId = this.getActiveMode()
     const mode = this.getMode(modeId)
     return mode ? mode.prompt : DEFAULT_SYSTEM_PROMPT
+  }
+
+  /**
+   * Get memory settings
+   * @returns {Object}
+   */
+  getMemorySettings() {
+    if (!this.config.memorySettings) {
+      this.config.memorySettings = this.defaultConfig.memorySettings
+      this.saveConfig()
+    }
+    return this.config.memorySettings
+  }
+
+  /**
+   * Get history limit for message context
+   * @returns {number}
+   */
+  getHistoryLimit() {
+    const settings = this.getMemorySettings()
+    return settings.historyLimit || 10
+  }
+
+  /**
+   * Set history limit
+   * @param {number} limit
+   */
+  setHistoryLimit(limit) {
+    if (!this.config.memorySettings) {
+      this.config.memorySettings = this.defaultConfig.memorySettings
+    }
+    this.config.memorySettings.historyLimit = limit
+    this.saveConfig()
+  }
+
+  /**
+   * Check if summarization is enabled
+   * @returns {boolean}
+   */
+  isSummarizationEnabled() {
+    const settings = this.getMemorySettings()
+    return settings.enableSummarization !== false
+  }
+
+  /**
+   * Set summarization enabled state
+   * @param {boolean} enabled
+   */
+  setSummarizationEnabled(enabled) {
+    if (!this.config.memorySettings) {
+      this.config.memorySettings = this.defaultConfig.memorySettings
+    }
+    this.config.memorySettings.enableSummarization = enabled
+    this.saveConfig()
+  }
+
+  /**
+   * Get summarization threshold
+   * @returns {number}
+   */
+  getSummarizationThreshold() {
+    const settings = this.getMemorySettings()
+    return settings.summarizationThreshold || 15
+  }
+
+  /**
+   * Set summarization threshold
+   * @param {number} threshold
+   */
+  setSummarizationThreshold(threshold) {
+    if (!this.config.memorySettings) {
+      this.config.memorySettings = this.defaultConfig.memorySettings
+    }
+    this.config.memorySettings.summarizationThreshold = threshold
+    this.saveConfig()
   }
 }
 

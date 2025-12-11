@@ -334,9 +334,23 @@ async function handleSendMessage() {
     const promptText = text || 'Assist'
 
     // Get conversation history (all messages except the current one we just added)
-    const conversationHistory = messages.slice(0, -1)
+    const allHistory = messages.slice(0, -1)
+    
+    // Apply history limit to save tokens
+    const historyLimitResult = await window.electronAPI.getHistoryLimit()
+    const historyLimit = historyLimitResult.success ? historyLimitResult.limit : 10
+    
+    // Only send last N messages based on history limit
+    const conversationHistory = allHistory.length > historyLimit 
+      ? allHistory.slice(-historyLimit)
+      : allHistory
 
-    console.log('Sending message to LLM...', { hasScreenshot: isScreenshotActive, historyLength: conversationHistory.length })
+    console.log('Sending message to LLM...', { 
+      hasScreenshot: isScreenshotActive, 
+      totalMessages: allHistory.length,
+      sentMessages: conversationHistory.length,
+      historyLimit: historyLimit
+    })
     const result = await window.electronAPI.sendMessage(promptText, capturedScreenshot, conversationHistory)
 
     // Remove loading indicator

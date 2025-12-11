@@ -48,6 +48,7 @@ let currentSettings = {
   anthropicApiKey: '',
   geminiModel: 'gemini-2.5-flash',
   openaiModel: 'gpt-4.1',
+  historyLimit: 10,
   anthropicModel: 'claude-sonnet-4-5',
   primaryDisplay: 0,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
@@ -152,7 +153,14 @@ async function loadSettings() {
     document.getElementById('anthropic-model').value = currentSettings.anthropicModel
     document.getElementById('system-prompt').value = currentSettings.systemPrompt
 
-    console.log('Settings loaded:', { activeProvider, hasGeminiKey: !!currentSettings.geminiApiKey })
+    // Load memory settings
+    const memorySettingsResult = await window.electronAPI.getMemorySettings()
+    if (memorySettingsResult.success) {
+      currentSettings.historyLimit = memorySettingsResult.settings.historyLimit || 10
+      document.getElementById('history-limit').value = currentSettings.historyLimit
+    }
+
+    console.log('Settings loaded:', { activeProvider, hasGeminiKey: !!currentSettings.geminiApiKey, historyLimit: currentSettings.historyLimit })
   } catch (error) {
     console.error('Failed to load settings:', error)
     showStatus('save-status', 'Failed to load settings', 'error')
@@ -545,6 +553,38 @@ async function deleteMode() {
     showStatus('mode-save-status', 'Failed to delete mode: ' + error.message, 'error')
   }
 }
+
+/**
+ * Save memory settings
+ */
+async function saveMemorySettings() {
+  try {
+    const historyLimit = parseInt(document.getElementById('history-limit').value)
+    
+    // Validate input
+    if (isNaN(historyLimit) || historyLimit < 5 || historyLimit > 50) {
+      showStatus('memory-status', 'Please enter a valid number between 5 and 50', 'error')
+      return
+    }
+
+    // Save to config
+    await window.electronAPI.setHistoryLimit(historyLimit)
+    currentSettings.historyLimit = historyLimit
+
+    showStatus('memory-status', 'Memory settings saved successfully!', 'success')
+    
+    // Hide success message after 2 seconds
+    setTimeout(() => {
+      document.getElementById('memory-status').style.display = 'none'
+    }, 2000)
+  } catch (error) {
+    console.error('Failed to save memory settings:', error)
+    showStatus('memory-status', 'Failed to save settings: ' + error.message, 'error')
+  }
+}
+
+// Make function globally accessible
+window.saveMemorySettings = saveMemorySettings
 
 /**
  * Save the currently selected mode

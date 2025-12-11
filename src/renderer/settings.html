@@ -421,6 +421,33 @@
       </div>
     </div>
 
+    <!-- Memory Settings -->
+    <div class="section">
+      <div class="section-title">Memory & Token Optimization</div>
+      <div class="form-description" style="margin-bottom: 16px;">
+        Control how much conversation history is sent with each message to save tokens
+      </div>
+
+      <div class="form-group">
+        <label for="history-limit">Message History Limit</label>
+        <div class="form-description">Number of recent message pairs to include in context (default: 10)</div>
+        <input 
+          type="number" 
+          id="history-limit" 
+          min="5" 
+          max="50" 
+          value="10"
+          style="width: 120px;"
+        >
+        <div style="font-size: 11px; color: rgba(255, 255, 255, 0.4); margin-top: 8px;">
+          Lower values save more tokens but may lose context. Higher values preserve more context but cost more.
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="saveMemorySettings()" style="margin-top: 12px;">Save Memory Settings</button>
+      <div id="memory-status" class="status-message"></div>
+    </div>
+
     <!-- Keyboard Shortcuts -->
     <div class="section">
       <div class="section-title">Keyboard Shortcuts</div>

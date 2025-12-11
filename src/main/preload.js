@@ -50,6 +50,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getActiveMode: () => ipcRenderer.invoke('get-active-mode'),
   setActiveMode: (modeId) => ipcRenderer.invoke('set-active-mode', modeId),
 
+  // Memory settings
+  getMemorySettings: () => ipcRenderer.invoke('get-memory-settings'),
+  getHistoryLimit: () => ipcRenderer.invoke('get-history-limit'),
+  setHistoryLimit: (limit) => ipcRenderer.invoke('set-history-limit', limit),
+  setSummarizationEnabled: (enabled) => ipcRenderer.invoke('set-summarization-enabled', enabled),
+
   // Display detection
   getDisplays: () => ipcRenderer.invoke('get-displays'),
 
