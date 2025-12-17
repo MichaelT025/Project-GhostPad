@@ -1,5 +1,5 @@
 /**
- * GhostPad Settings Window
+ * Shade Settings Window
  * Handles provider configuration, API keys, and preferences
  */
 
@@ -7,7 +7,7 @@ import { getIcon, initIcons } from './assets/icons/icons.js';
 
 // Default system prompt for screenshot analysis
 const DEFAULT_SYSTEM_PROMPT = `
-You're GhostPad, a real time assistant that gives short precise answers. 
+You're Shade, a real time assistant that gives short precise answers. 
 You respond naturally, like a sharp human who knows the topic well.
 
 Style:

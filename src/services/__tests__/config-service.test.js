@@ -13,8 +13,8 @@ describe('ConfigService', () => {
 
   beforeEach(() => {
     // Set up test directory
-    testDir = path.join('/tmp/ghostpad-test')
-    configPath = path.join(testDir, 'ghostpad-config.json')
+    testDir = path.join('/tmp/shade-test')
+    configPath = path.join(testDir, 'shade-config.json')
 
     // Ensure test directory exists
     if (!fs.existsSync(testDir)) {

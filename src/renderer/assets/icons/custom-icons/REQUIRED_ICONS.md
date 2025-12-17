@@ -1,4 +1,4 @@
-# Required Icons for GhostPad
+# Required Icons for Shade
 
 Upload SVG icons to this directory. All icon files should be named exactly as shown below.
 

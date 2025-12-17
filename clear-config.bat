@@ -1,6 +1,6 @@
 @echo off
-echo Deleting old GhostPad config file...
-del "%APPDATA%\ghostpad\ghostpad-config.json" 2>nul
+echo Deleting old Shade config file...
+del "%APPDATA%\shade\shade-config.json" 2>nul
 if %errorlevel% equ 0 (
     echo Config file deleted successfully!
 ) else (

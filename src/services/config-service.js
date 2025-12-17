@@ -3,7 +3,7 @@ const path = require('path')
 
 // Default system prompt for screenshot analysis
 const DEFAULT_SYSTEM_PROMPT = `
-You're GhostPad, a real time assistant that gives short precise answers. 
+You're Shade, a real time assistant that gives short precise answers. 
 You respond naturally, like a sharp human who knows the topic well.
 
 Style:
@@ -44,7 +44,7 @@ Use the recent messages to maintain coherent context.
 `
 
 /**
- * Configuration management for GhostPad
+ * Configuration management for Shade
  * Stores API keys and provider configurations using simple JSON file
  */
 class ConfigService {
@@ -53,7 +53,7 @@ class ConfigService {
     if (!userDataPath) {
       throw new Error('userDataPath is required for ConfigService')
     }
-    this.configPath = path.join(userDataPath, 'ghostpad-config.json')
+    this.configPath = path.join(userDataPath, 'shade-config.json')
 
     // Default configuration
     this.defaultConfig = {

@@ -1,5 +1,5 @@
 /**
- * GhostPad Icon System - Custom Icons Only
+ * Shade Icon System - Custom Icons Only
  *
  * This system loads icons from the custom-icons directory.
  * NO hardcoded SVG icons - all icons must be uploaded by the user.

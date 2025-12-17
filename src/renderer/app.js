@@ -1,5 +1,5 @@
 /**
- * GhostPad Chat UI
+ * Shade Chat UI
  * Handles message display, screenshot capture, and user interactions
  */
 
@@ -135,7 +135,7 @@ async function init() {
   // Auto-focus the input field so keyboard shortcuts work immediately
   messageInput.focus()
 
-  console.log('GhostPad initialized')
+  console.log('Shade initialized')
 }
 
 /**
@@ -854,7 +854,7 @@ function handleNewChat() {
   messagesContainer.innerHTML = `
     <div class="chat-wrapper" id="chat-wrapper">
       <div class="empty-state">
-        <h2>Welcome to GhostPad</h2>
+        <h2>Welcome to Shade</h2>
         <p>Capture your screen and ask questions</p>
       </div>
     </div>
