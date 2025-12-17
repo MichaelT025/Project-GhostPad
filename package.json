@@ -22,11 +22,21 @@
   "author": "",
   "license": "MIT",
   "type": "commonjs",
+  "build": {
+    "icon": "src/renderer/assets/icons/main_icon/favicon.ico",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ]
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@google/generative-ai": "^0.24.1",
     "@vitejs/plugin-react": "^5.1.1",
-    "electron": "32.2.7",
+    "electron": "^32.2.7",
     "electron-builder": "^26.0.12",
     "openai": "^6.10.0",
     "react": "^19.2.0",

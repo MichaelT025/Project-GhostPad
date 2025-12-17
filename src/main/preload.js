@@ -72,6 +72,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Icon management
   loadCustomIcons: () => ipcRenderer.invoke('load-custom-icons'),
+  
+  // Provider registry methods
+  getAllProvidersMeta: () => ipcRenderer.invoke('get-all-providers-meta'),
+  getConfiguredProviders: () => ipcRenderer.invoke('get-configured-providers'),
 
   // Cleanup listeners
   removeAllListeners: (channel) => {

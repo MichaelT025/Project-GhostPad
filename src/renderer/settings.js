@@ -50,39 +50,115 @@ Use the recent messages to maintain coherent context.
 // Current settings state
 let currentSettings = {
   activeProvider: 'gemini',
-  geminiApiKey: '',
-  openaiApiKey: '',
-  anthropicApiKey: '',
-  geminiModel: 'gemini-2.5-flash',
-  openaiModel: 'gpt-4.1',
+  providers: {}, // Dynamic provider configs
   historyLimit: 10,
-  anthropicModel: 'claude-sonnet-4-5',
   primaryDisplay: 0,
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
   modes: [],
   selectedMode: 'default'
 }
 
-// Provider metadata
-const providerInfo = {
-  gemini: {
-    name: 'Google Gemini',
-    iconName: 'gemini',
-    description: 'Fast and efficient vision model',
-    badge: 'Active'
-  },
-  openai: {
-    name: 'OpenAI GPT',
-    iconName: 'openai',
-    description: 'Powerful multimodal AI',
-    badge: 'Available'
-  },
-  anthropic: {
-    name: 'Anthropic Claude',
-    iconName: 'anthropic',
-    description: 'Advanced reasoning capabilities',
-    badge: 'Available'
+// Provider metadata from registry (loaded dynamically)
+let providerRegistry = {}
+
+/**
+ * Load provider metadata from registry
+ */
+async function loadProviderMetadata() {
+  try {
+    const result = await window.electronAPI.getAllProvidersMeta()
+    if (result.success) {
+      providerRegistry = result.providers
+      console.log('Provider metadata loaded:', Object.keys(providerRegistry))
+      return true
+    } else {
+      console.error('Failed to load provider metadata:', result.error)
+      return false
+    }
+  } catch (error) {
+    console.error('Error loading provider metadata:', error)
+    return false
   }
+}
+
+/**
+ * Populate provider dropdown from registry
+ */
+function populateProviderDropdown() {
+  const providerSelect = document.getElementById('provider-select')
+  providerSelect.innerHTML = '' // Clear existing options
+
+  // Add option for each provider in registry
+  for (const [providerId, provider] of Object.entries(providerRegistry)) {
+    const option = document.createElement('option')
+    option.value = providerId
+    option.textContent = provider.name
+    providerSelect.appendChild(option)
+  }
+
+  console.log('Provider dropdown populated with', Object.keys(providerRegistry).length, 'providers')
+}
+
+/**
+ * Generate provider sections dynamically from registry
+ */
+function generateProviderSections() {
+  const container = document.getElementById('provider-sections-container')
+  container.innerHTML = '' // Clear existing content
+
+  // Generate section for each provider in registry
+  for (const [providerId, provider] of Object.entries(providerRegistry)) {
+    const section = document.createElement('div')
+    section.className = 'section'
+    section.id = `${providerId}-section`
+    section.style.display = currentSettings.activeProvider === providerId ? 'block' : 'none'
+
+    // Generate models dropdown options from models object
+    const modelOptions = provider.models && Object.keys(provider.models).length > 0
+      ? Object.entries(provider.models).map(([modelId, modelMeta]) =>
+          `<option value="${modelId}">${modelMeta.name}</option>`
+        ).join('')
+      : '<option value="">Enter custom model</option>'
+
+    // Generate section HTML
+    section.innerHTML = `
+      <div class="section-title">${provider.name} Configuration</div>
+
+      <div class="form-group">
+        <label for="${providerId}-api-key">API Key</label>
+        <div class="form-description">Get your API key from <a href="${provider.website}" target="_blank" style="color: #4A9EFF;">${provider.name}</a></div>
+        <div class="api-key-input-wrapper">
+          <input type="password" id="${providerId}-api-key" placeholder="Enter your ${provider.name} API key">
+          <button class="toggle-visibility" onclick="togglePasswordVisibility('${providerId}-api-key')">Show</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="${providerId}-model">Model</label>
+        ${provider.models && Object.keys(provider.models).length > 0 ? `
+          <select id="${providerId}-model">
+            ${modelOptions}
+          </select>
+        ` : `
+          <input type="text" id="${providerId}-model" placeholder="Enter model name">
+        `}
+      </div>
+
+      ${provider.baseUrl ? `
+        <div class="form-group">
+          <label for="${providerId}-baseurl">Base URL</label>
+          <input type="text" id="${providerId}-baseurl" placeholder="${provider.baseUrl}">
+        </div>
+      ` : ''}
+
+      <button class="btn-test" onclick="testProvider('${providerId}')">Test Connection</button>
+      <div id="${providerId}-status" class="status-message"></div>
+    `
+
+    container.appendChild(section)
+  }
+
+  console.log('Provider sections generated')
 }
 
 /**
@@ -93,6 +169,19 @@ async function init() {
 
   // Initialize custom icons
   await initIcons()
+
+  // Load provider metadata from registry
+  const metadataLoaded = await loadProviderMetadata()
+  if (!metadataLoaded) {
+    showStatus('save-status', 'Failed to load provider metadata', 'error')
+    return
+  }
+
+  // Populate provider dropdown from registry
+  populateProviderDropdown()
+
+  // Generate provider sections dynamically
+  generateProviderSections()
 
   // Load current settings
   await loadSettings()
@@ -131,42 +220,40 @@ async function loadSettings() {
     const activeProvider = activeProviderResult.provider || 'gemini'
     currentSettings.activeProvider = activeProvider
 
-    // Get API keys for all providers
-    const geminiKeyResult = await window.electronAPI.getApiKey('gemini')
-    const openaiKeyResult = await window.electronAPI.getApiKey('openai')
-    const anthropicKeyResult = await window.electronAPI.getApiKey('anthropic')
+    // Load settings for each provider dynamically
+    for (const providerId of Object.keys(providerRegistry)) {
+      // Get API key
+      const keyResult = await window.electronAPI.getApiKey(providerId)
+      const apiKey = keyResult.apiKey || ''
 
-    currentSettings.geminiApiKey = geminiKeyResult.apiKey || ''
-    currentSettings.openaiApiKey = openaiKeyResult.apiKey || ''
-    currentSettings.anthropicApiKey = anthropicKeyResult.apiKey || ''
+      // Get provider config
+      const configResult = await window.electronAPI.getProviderConfig(providerId)
+      const config = configResult.config || {}
 
-    // Get provider configurations
-    const geminiConfigResult = await window.electronAPI.getProviderConfig('gemini')
-    const openaiConfigResult = await window.electronAPI.getProviderConfig('openai')
-    const anthropicConfigResult = await window.electronAPI.getProviderConfig('anthropic')
+      // Store in currentSettings
+      if (!currentSettings.providers[providerId]) {
+        currentSettings.providers[providerId] = {}
+      }
+      currentSettings.providers[providerId].apiKey = apiKey
+      currentSettings.providers[providerId].model = config.model || providerRegistry[providerId].defaultModel
+      currentSettings.providers[providerId].baseUrl = config.baseUrl || ''
 
-    const geminiConfig = geminiConfigResult.config || {}
-    const openaiConfig = openaiConfigResult.config || {}
-    const anthropicConfig = anthropicConfigResult.config || {}
+      // Update form fields
+      const apiKeyField = document.getElementById(`${providerId}-api-key`)
+      const modelField = document.getElementById(`${providerId}-model`)
+      const baseUrlField = document.getElementById(`${providerId}-baseurl`)
 
-    currentSettings.geminiModel = geminiConfig.model || 'gemini-2.5-flash'
-    currentSettings.openaiModel = openaiConfig.model || 'gpt-4.1'
-    currentSettings.anthropicModel = anthropicConfig.model || 'claude-sonnet-4-5'
+      if (apiKeyField) apiKeyField.value = apiKey
+      if (modelField) modelField.value = currentSettings.providers[providerId].model
+      if (baseUrlField) baseUrlField.value = currentSettings.providers[providerId].baseUrl
+    }
 
-    // Get system prompt from active provider config, use default if not set
-    const activeConfig = activeProvider === 'gemini' ? geminiConfig :
-                        activeProvider === 'openai' ? openaiConfig :
-                        anthropicConfig
+    // Get system prompt from active provider config
+    const activeConfig = currentSettings.providers[activeProvider] || {}
     currentSettings.systemPrompt = activeConfig.systemPrompt || DEFAULT_SYSTEM_PROMPT
 
-    // Update form fields
+    // Update UI fields
     document.getElementById('provider-select').value = activeProvider
-    document.getElementById('gemini-api-key').value = currentSettings.geminiApiKey || ''
-    document.getElementById('openai-api-key').value = currentSettings.openaiApiKey || ''
-    document.getElementById('anthropic-api-key').value = currentSettings.anthropicApiKey || ''
-    document.getElementById('gemini-model').value = currentSettings.geminiModel
-    document.getElementById('openai-model').value = currentSettings.openaiModel
-    document.getElementById('anthropic-model').value = currentSettings.anthropicModel
     document.getElementById('system-prompt').value = currentSettings.systemPrompt
 
     // Load memory settings
@@ -176,7 +263,7 @@ async function loadSettings() {
       document.getElementById('history-limit').value = currentSettings.historyLimit
     }
 
-    console.log('Settings loaded:', { activeProvider, hasGeminiKey: !!currentSettings.geminiApiKey, historyLimit: currentSettings.historyLimit })
+    console.log('Settings loaded:', { activeProvider, providers: Object.keys(currentSettings.providers), historyLimit: currentSettings.historyLimit })
   } catch (error) {
     console.error('Failed to load settings:', error)
     showStatus('save-status', 'Failed to load settings', 'error')
@@ -229,47 +316,52 @@ function setupEventListeners() {
     currentSettings.primaryDisplay = parseInt(e.target.value)
   })
 
-  // Auto-test API keys on input (debounced)
-  let geminiTimeout, openaiTimeout, anthropicTimeout
+  // Set up listeners for each provider dynamically
+  const timeouts = {}
 
-  document.getElementById('gemini-api-key').addEventListener('input', (e) => {
-    clearTimeout(geminiTimeout)
-    const apiKey = e.target.value.trim()
-    if (apiKey.length > 10) {  // Only test if key looks valid
-      geminiTimeout = setTimeout(async () => {
-        currentSettings.geminiApiKey = apiKey
-        // Save the API key immediately before testing
-        await window.electronAPI.saveApiKey('gemini', apiKey)
-        testProvider('gemini')
-      }, 1000)  // Wait 1 second after user stops typing
+  for (const providerId of Object.keys(providerRegistry)) {
+    // API key input listener (debounced auto-test)
+    const apiKeyField = document.getElementById(`${providerId}-api-key`)
+    if (apiKeyField) {
+      apiKeyField.addEventListener('input', (e) => {
+        clearTimeout(timeouts[providerId])
+        const apiKey = e.target.value.trim()
+        if (apiKey.length > 10) {
+          timeouts[providerId] = setTimeout(async () => {
+            if (!currentSettings.providers[providerId]) {
+              currentSettings.providers[providerId] = {}
+            }
+            currentSettings.providers[providerId].apiKey = apiKey
+            // Save the API key immediately before testing
+            await window.electronAPI.saveApiKey(providerId, apiKey)
+            testProvider(providerId)
+          }, 1000)
+        }
+      })
     }
-  })
 
-  document.getElementById('openai-api-key').addEventListener('input', (e) => {
-    clearTimeout(openaiTimeout)
-    const apiKey = e.target.value.trim()
-    if (apiKey.length > 10) {
-      openaiTimeout = setTimeout(async () => {
-        currentSettings.openaiApiKey = apiKey
-        // Save the API key immediately before testing
-        await window.electronAPI.saveApiKey('openai', apiKey)
-        testProvider('openai')
-      }, 1000)
+    // Model selection change
+    const modelField = document.getElementById(`${providerId}-model`)
+    if (modelField) {
+      modelField.addEventListener('change', (e) => {
+        if (!currentSettings.providers[providerId]) {
+          currentSettings.providers[providerId] = {}
+        }
+        currentSettings.providers[providerId].model = e.target.value
+      })
     }
-  })
 
-  document.getElementById('anthropic-api-key').addEventListener('input', (e) => {
-    clearTimeout(anthropicTimeout)
-    const apiKey = e.target.value.trim()
-    if (apiKey.length > 10) {
-      anthropicTimeout = setTimeout(async () => {
-        currentSettings.anthropicApiKey = apiKey
-        // Save the API key immediately before testing
-        await window.electronAPI.saveApiKey('anthropic', apiKey)
-        testProvider('anthropic')
-      }, 1000)
+    // Base URL input (for custom provider)
+    const baseUrlField = document.getElementById(`${providerId}-baseurl`)
+    if (baseUrlField) {
+      baseUrlField.addEventListener('input', (e) => {
+        if (!currentSettings.providers[providerId]) {
+          currentSettings.providers[providerId] = {}
+        }
+        currentSettings.providers[providerId].baseUrl = e.target.value.trim()
+      })
     }
-  })
+  }
 
   // Mode selection change
   document.getElementById('mode-select').addEventListener('change', (e) => {
@@ -284,25 +376,34 @@ function setupEventListeners() {
 function updateProviderUI() {
   const provider = currentSettings.activeProvider
 
-  // Hide all provider sections
-  document.getElementById('gemini-section').style.display = 'none'
-  document.getElementById('openai-section').style.display = 'none'
-  document.getElementById('anthropic-section').style.display = 'none'
+  // Hide all provider sections dynamically
+  for (const providerId of Object.keys(providerRegistry)) {
+    const section = document.getElementById(`${providerId}-section`)
+    if (section) {
+      section.style.display = 'none'
+    }
+  }
 
   // Show selected provider section
-  document.getElementById(`${provider}-section`).style.display = 'block'
+  const activeSection = document.getElementById(`${provider}-section`)
+  if (activeSection) {
+    activeSection.style.display = 'block'
+  }
 
-  // Update provider info box
-  const info = providerInfo[provider]
+  // Update provider info box if it exists
   const providerInfoEl = document.getElementById('current-provider-info')
-  const iconSvg = getIcon(info.iconName, 'icon-svg')
-  providerInfoEl.innerHTML = `
-    <div class="provider-icon">${iconSvg}</div>
-    <div class="provider-details">
-      <div class="provider-name">${info.name} <span class="provider-badge active">${info.badge}</span></div>
-      <div class="provider-status">${info.description}</div>
-    </div>
-  `
+  if (providerInfoEl && providerRegistry[provider]) {
+    const providerMeta = providerRegistry[provider]
+    const hasApiKey = currentSettings.providers[provider]?.apiKey?.length > 0
+    const badge = hasApiKey ? 'Active' : 'Configure'
+
+    providerInfoEl.innerHTML = `
+      <div class="provider-details">
+        <div class="provider-name">${providerMeta.name} <span class="provider-badge ${hasApiKey ? 'active' : ''}">${badge}</span></div>
+        <div class="provider-status">${providerMeta.description}</div>
+      </div>
+    `
+  }
 }
 
 /**
@@ -362,39 +463,40 @@ async function testProvider(provider) {
  */
 async function saveSettings() {
   try {
-    // Get current form values
-    const geminiApiKey = document.getElementById('gemini-api-key').value.trim()
-    const openaiApiKey = document.getElementById('openai-api-key').value.trim()
-    const anthropicApiKey = document.getElementById('anthropic-api-key').value.trim()
     const activeProvider = document.getElementById('provider-select').value
-    const geminiModel = document.getElementById('gemini-model').value
-    const openaiModel = document.getElementById('openai-model').value
-    const anthropicModel = document.getElementById('anthropic-model').value
     const systemPrompt = document.getElementById('system-prompt').value.trim() || DEFAULT_SYSTEM_PROMPT
 
-    // Validate that active provider has an API key
-    if (activeProvider === 'gemini' && !geminiApiKey) {
-      showStatus('save-status', 'Please enter a Gemini API key', 'error')
-      return
-    }
-    if (activeProvider === 'openai' && !openaiApiKey) {
-      showStatus('save-status', 'Please enter an OpenAI API key', 'error')
-      return
-    }
-    if (activeProvider === 'anthropic' && !anthropicApiKey) {
-      showStatus('save-status', 'Please enter an Anthropic API key', 'error')
-      return
-    }
+    // Iterate through all providers dynamically
+    for (const providerId of Object.keys(providerRegistry)) {
+      const apiKeyField = document.getElementById(`${providerId}-api-key`)
+      const modelField = document.getElementById(`${providerId}-model`)
+      const baseUrlField = document.getElementById(`${providerId}-baseurl`)
 
-    // Save API keys
-    if (geminiApiKey) await window.electronAPI.saveApiKey('gemini', geminiApiKey)
-    if (openaiApiKey) await window.electronAPI.saveApiKey('openai', openaiApiKey)
-    if (anthropicApiKey) await window.electronAPI.saveApiKey('anthropic', anthropicApiKey)
+      const apiKey = apiKeyField ? apiKeyField.value.trim() : ''
+      const model = modelField ? modelField.value : providerRegistry[providerId].defaultModel
+      const baseUrl = baseUrlField ? baseUrlField.value.trim() : ''
 
-    // Save provider configurations (with system prompt)
-    await window.electronAPI.setProviderConfig('gemini', { model: geminiModel, systemPrompt })
-    await window.electronAPI.setProviderConfig('openai', { model: openaiModel, systemPrompt })
-    await window.electronAPI.setProviderConfig('anthropic', { model: anthropicModel, systemPrompt })
+      // Validate that active provider has an API key (unless it's custom)
+      if (providerId === activeProvider && !apiKey && providerId !== 'custom') {
+        const providerName = providerRegistry[providerId].name
+        showStatus('save-status', `Please enter a ${providerName} API key`, 'error')
+        return
+      }
+
+      // Save API key if provided
+      if (apiKey) {
+        await window.electronAPI.saveApiKey(providerId, apiKey)
+      }
+
+      // Build provider config
+      const config = { model, systemPrompt }
+      if (baseUrl) {
+        config.baseUrl = baseUrl
+      }
+
+      // Save provider configuration
+      await window.electronAPI.setProviderConfig(providerId, config)
+    }
 
     // Set active provider
     await window.electronAPI.setActiveProvider(activeProvider)

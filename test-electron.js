@@ -1,22 +1,15 @@
-// Minimal Electron test
-console.log('Starting test...')
-console.log('Process versions:', process.versions)
-console.log('Process type:', process.type)
+const { app } = require('electron')
 
-try {
-  const electron = require('electron')
-  console.log('Electron type:', typeof electron)
-  console.log('Electron value:', electron)
+console.log('app:', app)
+console.log('app type:', typeof app)
 
-  if (typeof electron === 'string') {
-    console.log('ERROR: electron is a string (path), not the API object!')
-  } else if (electron && electron.app) {
-    console.log('SUCCESS: electron.app exists!')
-    electron.app.whenReady().then(() => {
-      console.log('App is ready!')
-      electron.app.quit()
-    })
-  }
-} catch (err) {
-  console.error('Error requiring electron:', err)
+if (app) {
+  console.log('app.whenReady type:', typeof app.whenReady)
+  app.whenReady().then(() => {
+    console.log('Electron app is ready!')
+    app.quit()
+  })
+} else {
+  console.error('ERROR: app is undefined!')
+  process.exit(1)
 }

@@ -12,7 +12,7 @@ plan.md
 resources/image.png
 testing/
 resources/
-docs/
+local/
 
 # Test coverage
 coverage/

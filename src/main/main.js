@@ -30,6 +30,7 @@ function createMainWindow() {
     height: height,
     x: x,
     y: y,
+    icon: path.join(__dirname, '../renderer/assets/icons/main_icon/favicon.ico'),
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -71,6 +72,7 @@ function createSettingsWindow() {
   settingsWindow = new BrowserWindow({
     width: 600,
     height: 700,
+    icon: path.join(__dirname, '../renderer/assets/icons/main_icon/favicon.ico'),
     modal: false,
     show: false,
     alwaysOnTop: false,
@@ -598,5 +600,40 @@ ipcMain.handle('load-custom-icons', async () => {
   } catch (error) {
     console.error('Failed to load custom icons:', error)
     return {}
+  }
+})
+
+// New handlers for provider registry and config management
+ipcMain.handle('get-all-providers-meta', async () => {
+  try {
+    const LLMFactory = require('../services/llm-factory')
+    const providers = LLMFactory.getAllProvidersMeta()
+    return { success: true, providers }
+  } catch (error) {
+    console.error('Failed to get provider metadata:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('get-configured-providers', async () => {
+  try {
+    if (!configService) {
+      return { success: false, error: 'Config service not initialized' }
+    }
+    
+    const providers = configService.getAllConfig().providers || {}
+    const configured = {}
+    
+    // Return only providers that have API keys configured
+    for (const [providerId, providerConfig] of Object.entries(providers)) {
+      if (providerConfig.apiKey && providerConfig.apiKey.length > 0) {
+        configured[providerId] = providerConfig
+      }
+    }
+    
+    return { success: true, providers: configured }
+  } catch (error) {
+    console.error('Failed to get configured providers:', error)
+    return { success: false, error: error.message }
   }
 })

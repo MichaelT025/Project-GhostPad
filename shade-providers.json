@@ -1,0 +1,56 @@
+{
+  "gemini": {
+    "name": "Google Gemini",
+    "type": "gemini",
+    "description": "Fast and efficient vision model",
+    "website": "https://makersuite.google.com/app/apikey",
+    "defaultModel": "gemini-2.0-flash-exp",
+    "models": {
+      "gemini-2.0-flash-exp": { "name": "Gemini 2.0 Flash (Experimental)" },
+      "gemini-1.5-flash": { "name": "Gemini 1.5 Flash" },
+      "gemini-1.5-pro": { "name": "Gemini 1.5 Pro" }
+    }
+  },
+  "openai": {
+    "name": "OpenAI",
+    "type": "openai",
+    "description": "Powerful multimodal AI",
+    "website": "https://platform.openai.com/api-keys",
+    "defaultModel": "gpt-4o",
+    "models": {
+      "gpt-4o": { "name": "GPT-4o" },
+      "gpt-4o-mini": { "name": "GPT-4o Mini" },
+      "o1": {
+        "name": "o1",
+        "options": {
+          "reasoningEffort": "high"
+        }
+      },
+      "o1-mini": { "name": "o1 Mini" }
+    }
+  },
+  "anthropic": {
+    "name": "Anthropic Claude",
+    "type": "anthropic",
+    "description": "Advanced reasoning capabilities",
+    "website": "https://console.anthropic.com/",
+    "defaultModel": "claude-sonnet-4",
+    "models": {
+      "claude-sonnet-4": { "name": "Claude Sonnet 4" },
+      "claude-opus-4": { "name": "Claude Opus 4" }
+    }
+  },
+  "ollama": {
+    "name": "Ollama (Local)",
+    "type": "openai-compatible",
+    "description": "Run local models with Ollama",
+    "website": "https://ollama.ai/",
+    "baseUrl": "http://localhost:11434/v1",
+    "defaultModel": "llama3.2",
+    "models": {
+      "llama3.2": { "name": "Llama 3.2" },
+      "qwen2.5-coder:7b": { "name": "Qwen 2.5 Coder 7B" },
+      "deepseek-r1": { "name": "DeepSeek R1" }
+    }
+  }
+}

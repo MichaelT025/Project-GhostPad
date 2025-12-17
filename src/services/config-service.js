@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const ProviderRegistry = require('./provider-registry')
 
 // Default system prompt for screenshot analysis
 const DEFAULT_SYSTEM_PROMPT = `
@@ -15,8 +16,8 @@ Use a normal conversational tone, use contractions, and avoid corporate or robot
 Math and code:
 When writing math, always use LaTeX with explicit delimiters so it can be rendered.
 Use any of these standard formats:
-- Inline math: $x^2$ or \\(x^2\\)
-- Block/display math: $$\\int_0^1 x^2\\,dx$$ or \\[\\int_0^1 x^2\\,dx\\]
+- Inline math: $x^2$ or \(x^2\)
+- Block/display math: $$\int_0^1 x^2\,dx$$ or \[\int_0^1 x^2\,dx\]
 
 Do NOT write bare LaTeX without delimiters.
 Do NOT put math inside fenced code blocks unless explicitly asked for raw LaTeX.
@@ -44,6 +45,78 @@ Use the recent messages to maintain coherent context.
 `
 
 /**
+ * Check if config is in old format (has geminiApiKey field)
+ * @param {Object} config - Configuration object
+ * @returns {boolean} True if config is in old format
+ */
+function needsMigration(config) {
+  return config && (config.geminiApiKey !== undefined || config.geminiConfig !== undefined)
+}
+
+/**
+ * Migrate config from old format to new format
+ * @param {Object} oldConfig - Old configuration object
+ * @returns {Object} New configuration object
+ */
+function migrateConfig(oldConfig) {
+  // If already in new format, return as-is
+  if (!needsMigration(oldConfig)) {
+    return oldConfig
+  }
+
+  console.log('Migrating config from old format to new format')
+
+  // Create new config structure
+  const newConfig = {
+    activeProvider: oldConfig.llmProvider || 'gemini',
+    providers: ProviderRegistry.generateDefaultProvidersConfig(),
+    screenshotMode: 'manual',
+    memoryLimit: 30,
+    modes: oldConfig.modes || [],
+    activeMode: oldConfig.activeMode || 'default'
+  }
+
+  // Migrate provider data
+  if (oldConfig.geminiApiKey) {
+    newConfig.providers.gemini.apiKey = oldConfig.geminiApiKey
+  }
+  if (oldConfig.openaiApiKey) {
+    newConfig.providers.openai.apiKey = oldConfig.openaiApiKey
+  }
+  if (oldConfig.anthropicApiKey) {
+    newConfig.providers.anthropic.apiKey = oldConfig.anthropicApiKey
+  }
+  if (oldConfig.customApiKey) {
+    newConfig.providers.custom.apiKey = oldConfig.customApiKey
+  }
+
+  // Migrate provider configs
+  if (oldConfig.geminiConfig) {
+    newConfig.providers.gemini.model = oldConfig.geminiConfig.model || 'gemini-2.5-flash'
+  }
+  if (oldConfig.openaiConfig) {
+    newConfig.providers.openai.model = oldConfig.openaiConfig.model || 'gpt-4.1'
+  }
+  if (oldConfig.anthropicConfig) {
+    newConfig.providers.anthropic.model = oldConfig.anthropicConfig.model || 'claude-sonnet-4-5'
+  }
+  if (oldConfig.customConfig) {
+    newConfig.providers.custom.model = oldConfig.customConfig.model || ''
+    newConfig.providers.custom.baseUrl = oldConfig.customConfig.baseUrl || ''
+  }
+
+  // Migrate other fields
+  if (oldConfig.modes) {
+    newConfig.modes = oldConfig.modes
+  }
+  if (oldConfig.activeMode) {
+    newConfig.activeMode = oldConfig.activeMode
+  }
+
+  return newConfig
+}
+
+/**
  * Configuration management for Shade
  * Stores API keys and provider configurations using simple JSON file
  */
@@ -55,22 +128,15 @@ class ConfigService {
     }
     this.configPath = path.join(userDataPath, 'shade-config.json')
 
-    // Default configuration
+    // Initialize provider registry with user data path
+    ProviderRegistry.initProvidersPath(userDataPath)
+
+    // Default configuration with new structure
     this.defaultConfig = {
-      llmProvider: 'gemini',
-      geminiApiKey: '',
-      openaiApiKey: '',
-      anthropicApiKey: '',
-      geminiConfig: {
-        model: 'gemini-2.5-flash'
-      },
-      openaiConfig: {
-        model: 'gpt-4-vision-preview'
-      },
-      anthropicConfig: {
-        model: 'claude-3-sonnet-20240229'
-      },
-      primaryDisplay: 0,
+      activeProvider: 'gemini',
+      providers: ProviderRegistry.generateDefaultProvidersConfig(),
+      screenshotMode: 'manual',
+      memoryLimit: 30,
       modes: [
         {
           id: 'default',
@@ -98,18 +164,15 @@ class ConfigService {
     try {
       if (fs.existsSync(this.configPath)) {
         const data = fs.readFileSync(this.configPath, 'utf8')
-        const loadedConfig = { ...this.defaultConfig, ...JSON.parse(data) }
-
-        // Migrate old Gemini 1.5 models to 2.5 (1.5 models no longer supported in v1beta API)
-        if (loadedConfig.geminiConfig && loadedConfig.geminiConfig.model) {
-          const oldModel = loadedConfig.geminiConfig.model
-          if (oldModel.includes('1.5')) {
-            console.log(`Migrating old Gemini model ${oldModel} to gemini-2.5-flash`)
-            loadedConfig.geminiConfig.model = 'gemini-2.5-flash'
-            // Save the migrated config
-            this.config = loadedConfig
-            this.saveConfig()
-          }
+        let loadedConfig = { ...this.defaultConfig, ...JSON.parse(data) }
+        
+        // Check if config needs migration from old format
+        if (needsMigration(loadedConfig)) {
+          console.log('Config needs migration from old format')
+          loadedConfig = migrateConfig(loadedConfig)
+          // Save the migrated config
+          this.config = loadedConfig
+          this.saveConfig()
         }
 
         return loadedConfig
@@ -136,7 +199,7 @@ class ConfigService {
    * @returns {string}
    */
   getActiveProvider() {
-    return this.config.llmProvider
+    return this.config.activeProvider
   }
 
   /**
@@ -144,7 +207,7 @@ class ConfigService {
    * @param {string} providerName
    */
   setActiveProvider(providerName) {
-    this.config.llmProvider = providerName
+    this.config.activeProvider = providerName
     this.saveConfig()
   }
 
@@ -154,7 +217,10 @@ class ConfigService {
    * @returns {string}
    */
   getApiKey(providerName) {
-    return this.config[`${providerName}ApiKey`] || ''
+    if (this.config.providers && this.config.providers[providerName]) {
+      return this.config.providers[providerName].apiKey || ''
+    }
+    return ''
   }
 
   /**
@@ -163,8 +229,13 @@ class ConfigService {
    * @param {string} apiKey
    */
   setApiKey(providerName, apiKey) {
-    this.config[`${providerName}ApiKey`] = apiKey
-    this.saveConfig()
+    if (this.config.providers) {
+      if (!this.config.providers[providerName]) {
+        this.config.providers[providerName] = {}
+      }
+      this.config.providers[providerName].apiKey = apiKey
+      this.saveConfig()
+    }
   }
 
   /**
@@ -173,7 +244,10 @@ class ConfigService {
    * @returns {Object}
    */
   getProviderConfig(providerName) {
-    return this.config[`${providerName}Config`] || {}
+    if (this.config.providers && this.config.providers[providerName]) {
+      return this.config.providers[providerName]
+    }
+    return {}
   }
 
   /**
@@ -182,8 +256,17 @@ class ConfigService {
    * @param {Object} config
    */
   setProviderConfig(providerName, config) {
-    this.config[`${providerName}Config`] = config
-    this.saveConfig()
+    if (this.config.providers) {
+      if (!this.config.providers[providerName]) {
+        this.config.providers[providerName] = {}
+      }
+      // Merge config instead of replacing to preserve existing fields like apiKey
+      this.config.providers[providerName] = {
+        ...this.config.providers[providerName],
+        ...config
+      }
+      this.saveConfig()
+    }
   }
 
   /**

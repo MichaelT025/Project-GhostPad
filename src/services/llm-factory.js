@@ -1,6 +1,8 @@
 const GeminiProvider = require('./providers/gemini-provider')
 const OpenAIProvider = require('./providers/openai-provider')
 const AnthropicProvider = require('./providers/anthropic-provider')
+const CustomProvider = require('./providers/custom-provider')
+const ProviderRegistry = require('./provider-registry')
 
 /**
  * Factory for creating LLM provider instances
@@ -14,27 +16,71 @@ class LLMFactory {
    * @returns {LLMProvider} - Provider instance
    */
   static createProvider(providerName, apiKey, config = {}) {
-    if (!apiKey) {
+    // Get provider metadata from registry
+    const providerMeta = ProviderRegistry.getProvider(providerName)
+    if (!providerMeta) {
+      throw new Error(`Unknown provider: ${providerName}`)
+    }
+
+    // Get model-specific options if defined
+    const modelOptions = providerMeta.models?.[config.model]?.options || {}
+
+    // Merge config with model-specific options
+    const finalConfig = { ...config, ...modelOptions }
+
+    // API key is optional for some local providers
+    const requiresApiKey = providerMeta.type !== 'openai-compatible'
+    if (requiresApiKey && !apiKey) {
       throw new Error(`API key is required for provider: ${providerName}`)
     }
 
-    switch (providerName.toLowerCase()) {
+    // Use provider's 'type' field to determine which SDK to instantiate
+    switch (providerMeta.type) {
       case 'gemini':
-        return new GeminiProvider(apiKey, config)
+        return new GeminiProvider(apiKey, finalConfig)
 
       case 'openai':
-        return new OpenAIProvider(apiKey, config)
+        return new OpenAIProvider(apiKey, finalConfig)
 
       case 'anthropic':
-        return new AnthropicProvider(apiKey, config)
+        return new AnthropicProvider(apiKey, finalConfig)
 
-      // Future providers:
-      // case 'custom':
-      //   return new CustomProvider(apiKey, config)
+      case 'openai-compatible':
+        // Use CustomProvider with baseUrl from provider metadata
+        return new CustomProvider(apiKey, {
+          ...finalConfig,
+          baseUrl: providerMeta.baseUrl
+        })
 
       default:
-        throw new Error(`Unknown provider: ${providerName}`)
+        throw new Error(`Unsupported provider type: ${providerMeta.type}`)
     }
+  }
+
+  /**
+   * Get provider metadata by ID
+   * @param {string} providerName - Provider name
+   * @returns {Object} - Provider metadata
+   */
+  static getProviderMeta(providerName) {
+    return ProviderRegistry.getProvider(providerName)
+  }
+
+  /**
+   * Get all provider metadata
+   * @returns {Object} - All provider metadata
+   */
+  static getAllProvidersMeta() {
+    return ProviderRegistry.getAllProviders()
+  }
+
+  /**
+   * Get models for a provider
+   * @param {string} providerName - Provider name
+   * @returns {Array} - Array of models
+   */
+  static getModelsForProvider(providerName) {
+    return ProviderRegistry.getModels(providerName)
   }
 
   /**
@@ -42,11 +88,7 @@ class LLMFactory {
    * @returns {Array<string>} - List of provider names
    */
   static getAvailableProviders() {
-    return [
-      'gemini',
-      'openai',
-      'anthropic'
-    ]
+    return ProviderRegistry.getProviderIds()
   }
 
   /**
@@ -55,7 +97,7 @@ class LLMFactory {
    * @returns {boolean} - True if supported
    */
   static isProviderSupported(providerName) {
-    return this.getAvailableProviders().includes(providerName.toLowerCase())
+    return ProviderRegistry.hasProvider(providerName)
   }
 }
 
