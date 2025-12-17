@@ -126,13 +126,7 @@ npm run build:win # Build Windows executable
 
 ### Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
-
-See [CLAUDE.md](docs/agents/CLAUDE.md) for detailed technical documentation.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, testing/build commands, and pull request guidelines.
 
 ## Roadmap
 
@@ -150,9 +144,8 @@ See [CLAUDE.md](docs/agents/CLAUDE.md) for detailed technical documentation.
 - [ ] Linux support
 - [ ] Automatic screenshot mode
 - [ ] Usage/cost tracking
-
-### V2.0+
 - [ ] File attachments
+### V2.0+
 - [ ] Agentic actions (MCP)
 - [ ] Calendar/email integration
 
