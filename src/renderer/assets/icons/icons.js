@@ -47,9 +47,24 @@ export const REQUIRED_ICONS = {
   'chevron-left': 'Chevron Left',
   'chevron-right': 'Chevron Right',
 
+  // Dashboard Navigation
+  'chat': 'Sessions Icon',
+  'robot': 'Modes Icon',
+  'config': 'Configuration Icon',
+  'keyboard': 'Shortcuts Icon',
+  'bug': 'Report Bug Icon',
+  'power': 'Quit Icon',
+
+  // Dashboard UI
+  'search': 'Search Icon',
+  'trash': 'Delete Icon',
+  'github': 'GitHub Icon',
+  'x': 'X Icon',
+  'website': 'Website Icon',
+
   // Utility
   'arrow-down': 'Arrow Down',
-  
+
   // Optional
   'loading': 'Loading Icon',
   'refresh': 'Refresh Icon',

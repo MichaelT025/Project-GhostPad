@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('new-chat', () => callback())
   },
 
+  // Listen for resume session requests
+  onResumeSession: (callback) => {
+    ipcRenderer.on('resume-session', (_event, sessionId) => callback(sessionId))
+  },
+
   // Listen for config changes (from settings window)
   onConfigChanged: (callback) => {
     ipcRenderer.on('config-changed', () => callback())
@@ -74,7 +79,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openSettings: () => ipcRenderer.invoke('open-settings'),
   hideWindow: () => ipcRenderer.invoke('hide-window'),
   setCollapsed: (collapsed, height) => ipcRenderer.send('set-collapsed', { collapsed, height }),
+  focusOverlay: () => ipcRenderer.invoke('focus-overlay'),
+  resumeSessionInOverlay: (sessionId) => ipcRenderer.invoke('resume-session-in-overlay', sessionId),
+  startNewChatInOverlay: () => ipcRenderer.invoke('start-new-chat-in-overlay'),
   quitApp: () => ipcRenderer.invoke('quit-app'),
+  minimizeDashboard: () => ipcRenderer.invoke('dashboard-minimize'),
+  closeDashboard: () => ipcRenderer.invoke('dashboard-close'),
 
   // Icon management
   loadCustomIcons: () => ipcRenderer.invoke('load-custom-icons'),

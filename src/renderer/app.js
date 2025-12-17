@@ -70,7 +70,14 @@ async function saveCurrentSession() {
     return
   }
 
+
+  // Do not create persisted sessions with no messages.
+  // This prevents empty "New Chat" entries from being saved.
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return
+  }
   const activeProviderResult = await window.electronAPI.getActiveProvider()
+
   const provider = activeProviderResult?.success ? activeProviderResult.provider : ''
 
   let model = ''
@@ -98,6 +105,80 @@ async function saveCurrentSession() {
   if (result?.success && result.session?.id) {
     currentSessionId = result.session.id
   }
+}
+
+async function loadSessionIntoChat(sessionId) {
+  if (!sessionId) return
+
+  const result = await window.electronAPI.loadSession(sessionId)
+  if (!result?.success) {
+    console.error('Failed to load session:', result?.error)
+    showToast('Failed to load session', 'error', 2500)
+    return
+  }
+
+  const session = result.session
+  if (!session || !Array.isArray(session.messages)) {
+    showToast('Session data was invalid', 'error', 2500)
+    return
+  }
+
+  // Reset UI container
+  messagesContainer.innerHTML = '<div class="chat-wrapper" id="chat-wrapper"></div>'
+  chatWrapper = document.getElementById('chat-wrapper')
+
+  // Reset state
+  messages.length = 0
+  currentSessionId = session.id || sessionId
+
+  if (memoryManager) {
+    memoryManager.clearConversation()
+  }
+
+  // Render all messages without re-saving during hydration
+  for (const m of session.messages) {
+    const type = m.type === 'ai' ? 'ai' : 'user'
+    const text = typeof m.text === 'string' ? m.text : ''
+    const hasScreenshot = !!m.hasScreenshot
+    const timestamp = m.timestamp ? new Date(m.timestamp) : new Date()
+
+    const messageEl = document.createElement('div')
+    messageEl.className = `message ${type}`
+
+    if (type === 'ai') {
+      messageEl.innerHTML = renderMarkdown(text)
+      addCopyButtons(messageEl)
+      addMessageCopyButton(messageEl, text)
+    } else {
+      messageEl.textContent = text
+    }
+
+    chatWrapper.appendChild(messageEl)
+
+    if (hasScreenshot && type === 'user') {
+      const meta = document.createElement('div')
+      meta.className = 'message-meta'
+      meta.textContent = 'Sent with screenshot'
+      chatWrapper.appendChild(meta)
+    }
+
+    messages.push({
+      id: typeof m.id === 'string' ? m.id : generateMessageId(),
+      type,
+      text,
+      hasScreenshot,
+      timestamp
+    })
+
+    if (memoryManager) {
+      const role = type === 'user' ? 'user' : 'assistant'
+      memoryManager.addMessage(role, text)
+    }
+  }
+
+  // Ensure the overlay is usable when resuming
+  expand()
+  scrollToBottom()
 }
 
 function autosizeMessageInput() {
@@ -170,8 +251,14 @@ async function init() {
     }
   })
 
-  // Home button - open settings window
-  homeBtn.addEventListener('click', () => {
+  // Home button - go to homepage/dashboard
+  homeBtn.addEventListener('click', async () => {
+    try {
+      await saveCurrentSession()
+    } catch (error) {
+      console.error('Failed to save session before navigating:', error)
+    }
+
     window.electronAPI.openSettings()
   })
 
@@ -241,6 +328,12 @@ async function init() {
 
   // Initialize collapsed state (starts collapsed)
   updateCollapseState()
+
+  window.electronAPI.onResumeSession((sessionId) => {
+    loadSessionIntoChat(sessionId).catch(error => {
+      console.error('Failed to resume session:', error)
+    })
+  })
 
   console.log('Shade initialized')
 }

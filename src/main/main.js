@@ -53,7 +53,7 @@ function createMainWindow() {
   // Content protection will be enabled temporarily during app screenshot capture
   mainWindow.setContentProtection(false)
 
-  // Load the renderer
+  // Load the overlay first
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
 
   // Open DevTools for debugging (disabled for production)
@@ -82,24 +82,24 @@ function createMainWindow() {
   })
 }
 
-// Create the settings window
-function createSettingsWindow() {
+// Create the dashboard window (replaces standalone settings)
+function createDashboardWindow() {
   // Don't create if already exists
   if (settingsWindow) {
     settingsWindow.focus()
-    // Reload settings data when window is refocused
-    settingsWindow.webContents.send('reload-settings')
     return
   }
 
   settingsWindow = new BrowserWindow({
-    width: 600,
-    height: 700,
+    width: 980,
+    height: 720,
     icon: path.join(__dirname, '../renderer/assets/icons/main_icon/favicon.ico'),
     modal: false,
     show: false,
+    frame: false,
+    transparent: true,
     alwaysOnTop: false,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#00000000',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -107,8 +107,8 @@ function createSettingsWindow() {
     },
   })
 
-  // Load settings.html
-  settingsWindow.loadFile(path.join(__dirname, '../renderer/settings.html'))
+  // Load dashboard/homepage
+  settingsWindow.loadFile(path.join(__dirname, '../renderer/homepage.html'))
 
   // Show when ready
   settingsWindow.once('ready-to-show', () => {
@@ -543,13 +543,81 @@ ipcMain.handle('set-active-mode', async (_event, modeId) => {
   }
 })
 
-// Open settings window
+// Open dashboard window (replaces standalone settings)
 ipcMain.handle('open-settings', async () => {
   try {
-    createSettingsWindow()
+    createDashboardWindow()
     return { success: true }
   } catch (error) {
-    console.error('Failed to open settings:', error)
+    console.error('Failed to open dashboard:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('focus-overlay', async () => {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return { success: false, error: 'Main window not available' }
+    }
+
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore()
+    }
+
+    mainWindow.show()
+    mainWindow.focus()
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to focus overlay:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('resume-session-in-overlay', async (_event, sessionId) => {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return { success: false, error: 'Main window not available' }
+    }
+
+    // If the dashboard is open, get it out of the way
+    // so the resumed chat replaces what the user sees.
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.hide()
+    }
+
+    mainWindow.webContents.send('resume-session', sessionId)
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore()
+    }
+    mainWindow.show()
+    mainWindow.focus()
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to resume session in overlay:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('start-new-chat-in-overlay', async () => {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return { success: false, error: 'Main window not available' }
+    }
+
+    // If the dashboard is open, get it out of the way.
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.hide()
+    }
+
+    mainWindow.webContents.send('new-chat')
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore()
+    }
+    mainWindow.show()
+    mainWindow.focus()
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to start new chat in overlay:', error)
     return { success: false, error: error.message }
   }
 })
@@ -558,6 +626,18 @@ ipcMain.handle('open-settings', async () => {
 ipcMain.handle('hide-window', async () => {
   if (mainWindow) {
     mainWindow.minimize()
+  }
+})
+
+ipcMain.handle('dashboard-minimize', async () => {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.minimize()
+  }
+})
+
+ipcMain.handle('dashboard-close', async () => {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.close()
   }
 })
 

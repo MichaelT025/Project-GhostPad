@@ -45,6 +45,21 @@ Upload SVG icons to this directory. All icon files should be named exactly as sh
 - [x] `chevron-left.svg` - Left chevron/arrow
 - [x] `chevron-right.svg` - Right chevron/arrow
 
+### Dashboard Navigation (Sidebar)
+- [x] `chat.svg` - Chat/Sessions icon
+- [x] `robot.svg` - Modes icon
+- [x] `config.svg` - Configuration icon
+- [x] `keyboard.svg` - Shortcuts icon
+- [x] `bug.svg` - Report bug icon
+- [x] `power.svg` - Quit/Logout icon
+
+### Dashboard UI Elements
+- [x] `search.svg` - Search input icon
+- [x] `trash.svg` - Delete session icon
+- [x] `github.svg` - GitHub logo (footer)
+- [x] `x.svg` - X/Twitter logo (footer)
+- [x] `website.svg` - Website/Globe icon (footer)
+
 ### Optional Icons (Future Use)
 - [x] `loading.svg` - Loading spinner/animation
 - [x] `refresh.svg` - Refresh/reload icon
