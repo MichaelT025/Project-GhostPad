@@ -630,6 +630,32 @@ ipcMain.handle('delete-mode', async (_event, modeId) => {
   }
 })
 
+ipcMain.handle('reset-modes', async () => {
+  try {
+    configService.resetModesToDefault()
+    console.log('All modes reset to defaults')
+    
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('config-changed')
+    }
+    
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to reset modes:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('get-default-modes', async () => {
+  try {
+    const modes = configService.getDefaultModes()
+    return { success: true, modes }
+  } catch (error) {
+    console.error('Failed to get default modes:', error)
+    return { success: false, error: error.message }
+  }
+})
+
 ipcMain.handle('get-active-mode', async () => {
   try {
     const modeId = configService.getActiveMode()
@@ -644,6 +670,13 @@ ipcMain.handle('set-active-mode', async (_event, modeId) => {
   try {
     configService.setActiveMode(modeId)
     console.log(`Active mode set to: ${modeId}`)
+
+    // Notify overlay if it exists
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('active-mode-changed', modeId)
+      mainWindow.webContents.send('config-changed')
+    }
+
     return { success: true }
   } catch (error) {
     console.error('Failed to set active mode:', error)

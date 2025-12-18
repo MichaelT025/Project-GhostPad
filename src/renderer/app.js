@@ -382,10 +382,6 @@ async function init() {
     }
 
     await loadBehaviorSettings()
-
-    // If the user changed startup behavior, apply it immediately.
-    isCollapsed = !!startCollapsedSetting
-    updateCollapseState()
   })
 
   // Streaming event handlers
@@ -398,6 +394,14 @@ async function init() {
 
   // Screenshot capture hotkey (Ctrl+Shift+S)
   window.electronAPI.onCaptureScreenshot(handleScreenshotCapture)
+
+  // Listen for active mode changes from dashboard
+  window.electronAPI.onActiveModeChanged(async (modeId) => {
+    console.log('Active mode changed in dashboard, updating overlay...', modeId)
+    // Refresh modes to make sure we have any new ones, then select the new active one
+    await loadModes()
+    modeDropdownInput.value = modeId
+  })
 
   // Initialize custom icons from directory
   await initIcons()

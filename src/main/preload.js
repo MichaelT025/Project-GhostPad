@@ -40,6 +40,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('config-changed', () => callback())
   },
 
+  // Listen for active mode changes (from dashboard)
+  onActiveModeChanged: (callback) => {
+    ipcRenderer.on('active-mode-changed', (_event, modeId) => callback(modeId))
+  },
+
   // Listen for reload settings request (when settings window is refocused)
   onReloadSettings: (callback) => {
     ipcRenderer.on('reload-settings', () => callback())
@@ -73,6 +78,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getModes: () => ipcRenderer.invoke('get-modes'),
   saveMode: (mode) => ipcRenderer.invoke('save-mode', mode),
   deleteMode: (modeId) => ipcRenderer.invoke('delete-mode', modeId),
+  resetModes: () => ipcRenderer.invoke('reset-modes'),
+  getDefaultModes: () => ipcRenderer.invoke('get-default-modes'),
   getActiveMode: () => ipcRenderer.invoke('get-active-mode'),
   setActiveMode: (modeId) => ipcRenderer.invoke('set-active-mode', modeId),
 

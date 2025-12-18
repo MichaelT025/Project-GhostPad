@@ -63,18 +63,22 @@ async function handleDeleteSession(id) {
   await loadSessions()
 }
 
-let renameModalSessionId = null
+let renameModalTarget = 'session'
+let renameModalId = null
 
-function openRenameModal(sessionId, currentTitle = '') {
+function openRenameModal(id, currentTitle = '', target = 'session') {
   const backdrop = document.getElementById('rename-modal')
   const input = document.getElementById('rename-input')
   const status = document.getElementById('rename-status')
+  const modalTitle = backdrop?.querySelector('h2')
   if (!backdrop || !input) return
 
-  renameModalSessionId = sessionId
+  renameModalId = id
+  renameModalTarget = target
   if (status) status.textContent = ''
+  if (modalTitle) modalTitle.textContent = target === 'session' ? 'Rename conversation' : 'Rename mode'
 
-  input.value = (currentTitle || '').trim() || 'New Chat'
+  input.value = (currentTitle || '').trim() || (target === 'session' ? 'New Chat' : 'New Mode')
   backdrop.classList.add('open')
 
   // Focus + select for quick editing
@@ -88,21 +92,56 @@ function closeRenameModal() {
   const backdrop = document.getElementById('rename-modal')
   const status = document.getElementById('rename-status')
   if (status) status.textContent = ''
-  renameModalSessionId = null
+  renameModalId = null
   backdrop?.classList.remove('open')
 }
 
 async function submitRenameModal() {
   const input = document.getElementById('rename-input')
   const status = document.getElementById('rename-status')
-  const id = renameModalSessionId
+  const id = renameModalId
+  const target = renameModalTarget
   if (!input || !id) return
 
-  const finalTitle = (input.value || '').trim() || 'New Chat'
-  const result = await window.electronAPI.renameSession(id, finalTitle)
+  const finalTitle = (input.value || '').trim()
+  
+  if (!finalTitle) {
+    if (status) {
+      status.textContent = 'Name cannot be empty'
+      status.style.color = 'var(--danger)'
+    }
+    return
+  }
+  
+  let result
+  if (target === 'session') {
+    result = await window.electronAPI.renameSession(id, finalTitle)
+  } else {
+    const state = await fetchModesState(true)
+    const mode = state.modes.find(m => m.id === id)
+    if (mode) {
+      mode.name = finalTitle
+      await window.electronAPI.saveMode(mode)
+      result = { success: true }
+      cachedModes = null
+    } else {
+      result = { success: false, error: 'Mode not found' }
+    }
+  }
+
   if (result?.success) {
     closeRenameModal()
-    await loadSessions()
+    if (target === 'session') {
+      await loadSessions()
+    } else {
+      if (modesViewInitialized) {
+        const listEl = document.getElementById('modes-list')
+        const editorEl = document.getElementById('mode-editor')
+        const s = await fetchModesState(true)
+        renderModesList(listEl, s)
+        await renderModeEditor(editorEl, s)
+      }
+    }
   } else {
     if (status) status.textContent = result?.error || 'Failed to rename.'
   }
@@ -116,7 +155,7 @@ async function handleRenameSession(id) {
     currentTitle = card.querySelector('.session-title')?.textContent || ''
   }
 
-  openRenameModal(id, currentTitle)
+  openRenameModal(id, currentTitle, 'session')
 }
 
 let showingSaved = false
@@ -258,13 +297,11 @@ function toggleBulkModeUI(active) {
       savedBtn.innerHTML = `<span class="nav-icon" data-icon="save"></span> ${showingSaved ? 'All Chats' : 'Saved'}`
       if (showingSaved) {
         savedBtn.classList.add('active')
-        // Optional: style "active" if you want it to look pressed
       } else {
         savedBtn.classList.remove('active')
       }
       insertIcon(savedBtn.querySelector('.nav-icon'), 'save')
 
-      // Clear search if we toggle modes? Maybe keep it.
       const searchInput = document.getElementById('search-input')
       if (searchInput) {
         searchInput.value = ''
@@ -307,9 +344,8 @@ function renderSessionList(container, sessions) {
       card.className = 'session-card'
       card.setAttribute('role', 'button')
       card.setAttribute('tabindex', '0')
-      card.dataset.sessionId = session.id // For reference lookup
+      card.dataset.sessionId = session.id 
 
-      // Checkbox container
       const checkboxContainer = document.createElement('div')
       checkboxContainer.className = 'session-checkbox-container'
       
@@ -318,7 +354,6 @@ function renderSessionList(container, sessions) {
       checkbox.className = 'session-checkbox'
       checkbox.checked = selectedSessionIds.has(session.id)
       
-      // Stop propagation to prevent opening session when clicking checkbox
       checkbox.addEventListener('click', (e) => {
         e.stopPropagation()
       })
@@ -341,7 +376,6 @@ function renderSessionList(container, sessions) {
       const title = document.createElement('div')
       title.className = 'session-title'
       
-      // Add star if saved
       if (session.isSaved) {
         const starSpan = document.createElement('span')
         starSpan.className = 'star-icon'
@@ -408,7 +442,6 @@ function renderSessionList(container, sessions) {
         handleDeleteSession(session.id)
       })
 
-      // Append in specific order for CSS to handle visibility
       right.appendChild(count)
       right.appendChild(time)
       right.appendChild(renameBtn)
@@ -424,7 +457,6 @@ function renderSessionList(container, sessions) {
         }
       })
       
-      // Context menu handler
       card.addEventListener('contextmenu', (e) => {
         e.preventDefault()
         window.electronAPI.showSessionContextMenu(session.id)
@@ -464,12 +496,10 @@ async function loadSessions(query = '') {
 }
 
 function showView(viewId) {
-  // Hide all views
   document.querySelectorAll('.view-container').forEach(el => {
     el.style.display = 'none'
   })
 
-  // Show requested view
   const view = document.getElementById(viewId)
   if (view) {
     view.style.display = 'flex'
@@ -488,16 +518,12 @@ let modeSaveTimer = null
 
 function normalizeProvidersMeta(providers) {
   if (!providers) return []
-
-  // ProviderRegistry.getAllProviders() returns an object keyed by providerId
   if (!Array.isArray(providers) && typeof providers === 'object') {
     return Object.entries(providers).map(([id, meta]) => ({
       id,
       ...meta
     }))
   }
-
-  // Already an array
   return providers.map(p => ({
     id: p.id || p.providerId || p.name,
     ...p
@@ -505,27 +531,72 @@ function normalizeProvidersMeta(providers) {
 }
 
 function getProviderLabel(provider) {
-  // Prefer explicit label/name from metadata, fallback to id
   return provider?.label || provider?.displayName || provider?.name || provider?.id
 }
 
 function extractModelsFromProviderMeta(providerMeta) {
   const models = providerMeta?.models
   if (!models) return []
-
   if (Array.isArray(models)) {
     return models.map(m => ({
       id: m.id || m.model || m.name,
       ...m
     })).filter(m => m.id)
   }
-
-  // models is an object keyed by modelId
   if (typeof models === 'object') {
     return Object.entries(models).map(([id, meta]) => ({ id, ...meta }))
   }
-
   return []
+}
+
+function normalizeSearchText(value) {
+  const raw = (value || '').toString().toLowerCase().trim()
+  const spaced = raw.replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+  return {
+    raw,
+    spaced,
+    noSpace: spaced.replace(/\s+/g, '')
+  }
+}
+
+function scoreModelMatch(model, query) {
+  const q = normalizeSearchText(query)
+  if (!q.spaced) return { score: 0 }
+
+  const idText = normalizeSearchText(model?.id)
+  const nameText = normalizeSearchText(model?.name)
+
+  const candidates = [idText, nameText]
+    .filter(c => c && (c.spaced || c.noSpace))
+
+  let best = null
+
+  for (const c of candidates) {
+    let score = null
+
+    if (c.spaced === q.spaced) score = 1000
+    else if (c.noSpace === q.noSpace && q.noSpace) score = 950
+    else if (c.spaced.includes(q.spaced)) score = 800
+    else if (c.noSpace.includes(q.noSpace) && q.noSpace.length >= 3) score = 780
+    else {
+      const qTokens = q.spaced.split(' ').filter(Boolean)
+      const cTokens = new Set(c.spaced.split(' ').filter(Boolean))
+
+      const matched = qTokens.filter(t => cTokens.has(t))
+      if (matched.length === qTokens.length && qTokens.length) {
+        score = 700 + matched.length * 10
+      } else if (matched.length) {
+        score = 500 + matched.length * 10
+      }
+    }
+
+    if (score !== null && (best === null || score > best)) {
+      best = score
+    }
+  }
+
+  if (best === null) return null
+  return { score: best }
 }
 
 async function fetchConfigurationState(force = false) {
@@ -636,8 +707,12 @@ function renderConfig(container, state) {
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="form-row" style="margin-top: var(--space-10);">
+    <div class="config-card">
+      <h2>Default startup behavior</h2>
+      <p>Choose how Shade opens by default.</p>
+      <div class="form-row">
         <div class="form-field">
           <label>Start overlay collapsed</label>
           <div class="inline-actions">
@@ -728,21 +803,16 @@ function sanitizeMode(mode) {
   }
 }
 
-function renderModesList(container, state, query = '') {
+function renderModesList(container, state) {
   const modes = (state.modes || []).slice()
   const activeModeId = state.activeModeId || 'default'
 
-  const q = (query || '').trim().toLowerCase()
-  const filtered = q
-    ? modes.filter(m => (m.name || '').toLowerCase().includes(q) || (m.id || '').toLowerCase().includes(q))
-    : modes
-
-  if (!filtered.length) {
-    container.innerHTML = `<div class="empty" style="margin-top: 24px;"><h2>No modes found</h2><p>Create a mode to get started.</p></div>`
+  if (!modes.length) {
+    container.innerHTML = `<div class="status-line">No modes found.</div>`
     return
   }
 
-  container.innerHTML = filtered
+  container.innerHTML = modes
     .map(m => {
       const mode = sanitizeMode(m)
       const isActive = mode.id === activeModeId
@@ -750,17 +820,21 @@ function renderModesList(container, state, query = '') {
       const subtitleParts = []
       if (mode.provider) subtitleParts.push(mode.provider)
       if (mode.model) subtitleParts.push(mode.model)
-      const subtitle = subtitleParts.length ? subtitleParts.join(' • ') : 'Uses current provider/model'
+      const subtitle = subtitleParts.length ? subtitleParts.join(' • ') : 'Current provider/model'
 
       return `
-        <div class="mode-card ${isSelected ? 'active' : ''}" data-mode-id="${mode.id}">
+        <div class="mode-item ${isSelected ? 'active' : ''}" data-mode-id="${mode.id}">
           <div class="mode-meta">
-            <div class="mode-name">${mode.name}${isActive ? ' <span class="pill small" style="margin-left: 8px;">Active</span>' : ''}</div>
+            <div class="mode-name">
+              ${mode.name}
+              ${isActive ? ' <span class="badge badge-info" style="margin-left: 8px; font-size: 10px; padding: 1px 6px;">Active</span>' : ''}
+            </div>
             <div class="mode-sub">${subtitle}</div>
           </div>
           <div class="mode-actions">
-            ${!isActive ? `<button class="mini-btn" data-action="activate" data-mode-id="${mode.id}" type="button">Activate</button>` : ''}
-            ${!mode.isDefault ? `<button class="icon-mini danger" data-action="delete" data-mode-id="${mode.id}" type="button" title="Delete"><span class="nav-icon" data-icon="trash"></span></button>` : ''}
+            <button class="icon-mini" data-action="rename-mode" data-mode-id="${mode.id}" type="button" title="Rename mode"><span class="nav-icon" data-icon="pencil"></span></button>
+            ${!mode.isDefault ? `<button class="icon-mini danger" data-action="delete-mode" data-mode-id="${mode.id}" type="button" title="Delete mode"><span class="nav-icon" data-icon="trash"></span></button>` : ''}
+            ${isSelected ? '<span class="nav-icon" data-icon="check" style="color: var(--accent); width: 16px; height: 16px;"></span>' : ''}
           </div>
         </div>
       `
@@ -769,6 +843,8 @@ function renderModesList(container, state, query = '') {
 
   // icons
   container.querySelectorAll('[data-icon="trash"]').forEach(el => insertIcon(el, 'trash'))
+  container.querySelectorAll('[data-icon="check"]').forEach(el => insertIcon(el, 'check'))
+  container.querySelectorAll('[data-icon="pencil"]').forEach(el => insertIcon(el, 'pencil'))
 }
 
 async function renderModeEditor(container, state) {
@@ -776,12 +852,29 @@ async function renderModeEditor(container, state) {
   const mode = modes.find(m => m.id === selectedModeId) || modes.find(m => m.id === state.activeModeId) || modes[0]
 
   if (!mode) {
-    container.innerHTML = `<div class="empty" style="margin-top: 0;"><h2>No modes</h2><p>Create a mode to configure prompts and defaults.</p></div>`
+    container.innerHTML = `
+      <div class="config-card">
+        <div class="empty" style="margin-top: 0;">
+          <h2>No mode selected</h2>
+          <p>Select a mode above or create a new one to configure.</p>
+        </div>
+      </div>`
     return
   }
 
   selectedModeId = mode.id
   const sanitized = sanitizeMode(mode)
+
+  const recommendations = {
+    'bolt': 'Gemini Gemini 2.5 Flash',
+    'tutor': 'OpenAI GPT-4o',
+    'coder': 'OpenAI GPT-4o',
+    'thinker': 'OpenAI GPT-5.2'
+  }
+  const recommendation = recommendations[mode.id]
+  const recommendationHtml = recommendation 
+    ? `<div class="helper-text" style="margin-bottom: var(--space-12); color: var(--accent); font-weight: 500;">Recommended model: ${recommendation}</div>`
+    : ''
 
   const { providers, activeProvider } = await fetchConfigurationState()
 
@@ -794,21 +887,9 @@ async function renderModeEditor(container, state) {
   const providerId = sanitized.provider || activeProvider || (providers?.[0]?.id || '')
 
   container.innerHTML = `
-    <div class="form-row" style="align-items: center;">
-      <div class="form-field" style="min-width: 0;">
-        <label for="mode-name">Mode name</label>
-        <input id="mode-name" class="text-input" type="text" value="${sanitized.name.replace(/"/g, '&quot;')}" />
-        <div id="mode-save-status" class="status-line"></div>
-      </div>
-      <div class="inline-actions">
-        <button id="mode-activate" class="mini-btn" type="button">Make active</button>
-        ${sanitized.isDefault ? '' : '<button id="mode-delete" class="mini-btn danger" type="button">Delete</button>'}
-      </div>
-    </div>
-
-    <div class="config-card" style="margin: var(--space-12) 0 0 0;">
-      <h2>Model defaults</h2>
-      <p>When this mode is active, Shade uses these defaults.</p>
+    <div class="config-card">
+      <h2>Model Defaults</h2>
+      ${recommendationHtml}
 
       <div class="form-row">
         <div class="form-field">
@@ -820,23 +901,45 @@ async function renderModeEditor(container, state) {
       <div class="form-row" style="margin-top: var(--space-12);">
         <div class="form-field">
           <label for="mode-model-search">Search models</label>
+          <div class="helper-text" style="margin-bottom: var(--space-8);">Click a model below to select it.</div>
           <input id="mode-model-search" class="text-input" type="text" placeholder="Search by name" autocomplete="off" />
-          <div class="helper-text">Click a model to select it.</div>
+          <div id="mode-model-recommendation" class="helper-text"></div>
         </div>
       </div>
 
-      <div id="mode-model-list" class="model-list" aria-label="Mode models"></div>
+      <div id="mode-model-list" class="model-list" style="max-height: 240px;" aria-label="Mode models"></div>
     </div>
 
-    <div class="config-card" style="margin: var(--space-12) 0 0 0;">
-      <h2>System prompt</h2>
-      <p>This prompt is used for new messages in this mode.</p>
-      <textarea id="mode-prompt" class="textarea" placeholder="Enter system prompt...">${(sanitized.prompt || '').replace(/</g, '&lt;')}</textarea>
+    <div class="config-card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h2>System Prompt</h2>
+          <p>This prompt defines the AI's behavior in this mode.</p>
+        </div>
+        ${mode.isDefault ? `
+          <button id="mode-reset-prompt" class="mini-btn" type="button" style="font-size: 10px; padding: 2px 8px; border-color: rgba(255,255,255,0.1);">
+            Reset to Default
+          </button>
+        ` : ''}
+      </div>
+      <textarea id="mode-prompt" class="textarea" style="min-height: 300px;" placeholder="Enter system prompt instructions...">${(sanitized.prompt || '').replace(/</g, '&lt;')}</textarea>
+      <div class="helper-text" style="margin-top: var(--space-8);">Changes are saved automatically.</div>
     </div>
   `
 
   const providerSelect = container.querySelector('#mode-provider')
   if (providerSelect) providerSelect.value = providerId
+
+  const recommendationEl = container.querySelector('#mode-model-recommendation')
+  if (recommendationEl) {
+    const recommended = {
+      bolt: 'Gemini 2.5 Flash',
+      tutor: 'GPT-4o',
+      coder: 'GPT-4o'
+    }[sanitized.id]
+
+    recommendationEl.textContent = recommended ? `Recommended: ${recommended}` : ''
+  }
 
   await updateModeModelList(container, providerId, sanitized.model)
 }
@@ -848,9 +951,21 @@ async function updateModeModelList(editorEl, providerId, selectedModelId) {
   const state = await fetchConfigurationState()
   const providerMeta = (state.providers || []).find(p => p.id === providerId)
   const models = extractModelsFromProviderMeta(providerMeta).sort((a, b) => (a.id || '').localeCompare(b.id || ''))
-  const q = (search?.value || '').trim().toLowerCase()
+  const q = (search?.value || '').trim()
 
-  let filtered = q ? models.filter(m => (m.id || '').toLowerCase().includes(q)) : models
+  let filtered
+  if (!q) {
+    filtered = models
+  } else {
+    filtered = models
+      .map(m => ({ model: m, match: scoreModelMatch(m, q) }))
+      .filter(x => x.match)
+      .sort((a, b) => {
+        if (b.match.score !== a.match.score) return b.match.score - a.match.score
+        return (a.model.id || '').localeCompare(b.model.id || '')
+      })
+      .map(x => x.model)
+  }
 
   if (selectedModelId) {
     const idx = filtered.findIndex(m => m.id === selectedModelId)
@@ -863,7 +978,7 @@ async function updateModeModelList(editorEl, providerId, selectedModelId) {
   if (!list) return
 
   if (!filtered.length) {
-    list.innerHTML = '<div class="status-line">No models found</div>'
+    list.innerHTML = `<div class="status-line">No models found.</div>`
     return
   }
 
@@ -872,8 +987,8 @@ async function updateModeModelList(editorEl, providerId, selectedModelId) {
       const isActive = m.id === selectedModelId
       return `
         <div class="model-item ${isActive ? 'active' : ''}" data-model-id="${m.id}">
-          <span>${m.id}</span>
-          ${isActive ? '<span class="nav-icon" data-icon="check" style="color: var(--accent); width: 16px; height: 16px;"></span>' : ''}
+          <span style="font-size: 13px; font-weight: 500;">${m.id}</span>
+          ${isActive ? '<span class="nav-icon" data-icon="check" style="color: var(--accent); width: 14px; height: 14px;"></span>' : ''}
         </div>
       `
     })
@@ -917,7 +1032,6 @@ async function applyModeDefaultsIfActive(modeId) {
 async function initModesView() {
   const listEl = document.getElementById('modes-list')
   const editorEl = document.getElementById('mode-editor')
-  const searchEl = document.getElementById('modes-search')
   const newBtn = document.getElementById('mode-new')
 
   if (!listEl || !editorEl) return
@@ -927,12 +1041,87 @@ async function initModesView() {
 
   const rerender = async () => {
     const s = await fetchModesState(true)
-    renderModesList(listEl, s, searchEl?.value || '')
+    renderModesList(listEl, s)
     await renderModeEditor(editorEl, s)
   }
 
-  searchEl?.addEventListener('input', () => {
-    fetchModesState(true).then(s => renderModesList(listEl, s, searchEl.value)).catch(console.error)
+  // Restore Defaults Global Action
+  const restoreBtn = document.getElementById('modes-restore-defaults')
+  const restoreModal = document.getElementById('restore-modes-modal')
+  const restoreConfirm = document.getElementById('restore-modes-confirm')
+  const restoreCancel = document.getElementById('restore-modes-cancel')
+
+  restoreBtn?.addEventListener('click', () => {
+    restoreModal?.classList.add('open')
+  })
+
+  restoreCancel?.addEventListener('click', () => {
+    restoreModal?.classList.remove('open')
+  })
+
+  // Insert icon for restore button
+  const restoreIconEl = restoreBtn?.querySelector('[data-icon="refresh"]')
+  if (restoreIconEl) insertIcon(restoreIconEl, 'refresh', 'nav-icon')
+  
+  // Insert icon for restore modal
+  const restoreModalIconEl = restoreModal?.querySelector('[data-icon="refresh"]')
+  if (restoreModalIconEl) insertIcon(restoreModalIconEl, 'refresh', 'nav-icon')
+
+  restoreConfirm?.addEventListener('click', async () => {
+    restoreConfirm.disabled = true
+    restoreConfirm.textContent = 'Resetting...'
+    try {
+      await window.electronAPI.resetModes()
+      cachedModes = null
+      selectedModeId = 'bolt'
+      await rerender()
+      restoreModal?.classList.remove('open')
+    } catch (err) {
+      console.error('Failed to reset modes:', err)
+      alert('Failed to reset modes: ' + err.message)
+    } finally {
+      restoreConfirm.disabled = false
+      restoreConfirm.textContent = 'Reset Everything'
+    }
+  })
+
+  // Reset Prompt Modal
+  const resetPromptModal = document.getElementById('reset-prompt-modal')
+  const resetPromptConfirm = document.getElementById('reset-prompt-confirm')
+  const resetPromptCancel = document.getElementById('reset-prompt-cancel')
+
+  resetPromptCancel?.addEventListener('click', () => {
+    resetPromptModal?.classList.remove('open')
+  })
+
+  // Insert icon for reset prompt modal
+  const resetPromptModalIconEl = resetPromptModal?.querySelector('[data-icon="refresh"]')
+  if (resetPromptModalIconEl) insertIcon(resetPromptModalIconEl, 'refresh', 'nav-icon')
+
+  resetPromptConfirm?.addEventListener('click', async () => {
+    resetPromptConfirm.disabled = true
+    resetPromptConfirm.textContent = 'Resetting...'
+    try {
+      const s = await fetchModesState(true)
+      const mode = s.modes.find(m => m.id === selectedModeId)
+      if (mode) {
+        const defaultModesResult = await window.electronAPI.getDefaultModes()
+        const defaultMode = (defaultModesResult?.modes || []).find(m => m.id === mode.id)
+        if (defaultMode) {
+          mode.prompt = defaultMode.prompt
+          await window.electronAPI.saveMode(mode)
+          cachedModes = null
+          await rerender()
+        }
+      }
+      resetPromptModal?.classList.remove('open')
+    } catch (err) {
+      console.error('Failed to reset prompt:', err)
+      alert('Failed to reset prompt: ' + err.message)
+    } finally {
+      resetPromptConfirm.disabled = false
+      resetPromptConfirm.textContent = 'Reset Prompt'
+    }
   })
 
   newBtn?.addEventListener('click', async () => {
@@ -947,12 +1136,12 @@ async function initModesView() {
     cachedModes = null
     const s = await fetchModesState(true)
     selectedModeId = mode.id
-    renderModesList(listEl, s, searchEl?.value || '')
+    renderModesList(listEl, s)
     await renderModeEditor(editorEl, s)
   })
 
   listEl.addEventListener('click', async (e) => {
-    const card = e.target.closest('.mode-card')
+    const item = e.target.closest('.mode-item')
     const action = e.target.closest('[data-action]')
 
     if (action) {
@@ -960,41 +1149,44 @@ async function initModesView() {
       const act = action.getAttribute('data-action')
       if (!modeId) return
 
-      if (act === 'delete') {
+      if (act === 'delete-mode') {
         if (!window.confirm('Delete this mode?')) return
         await window.electronAPI.deleteMode(modeId)
         cachedModes = null
         const s = await fetchModesState(true)
         if (selectedModeId === modeId) selectedModeId = s.activeModeId
-        renderModesList(listEl, s, searchEl?.value || '')
+        renderModesList(listEl, s)
         await renderModeEditor(editorEl, s)
-      } else if (act === 'activate') {
-        await window.electronAPI.setActiveMode(modeId)
-        cachedActiveModeId = modeId
-        cachedModes = null
-        await applyModeDefaultsIfActive(modeId)
-        await rerender()
+      } else if (act === 'rename-mode') {
+        const s = await fetchModesState(true)
+        const mode = s.modes.find(m => m.id === modeId)
+        if (mode) {
+          openRenameModal(modeId, mode.name, 'mode')
+        }
       }
       return
     }
 
-    if (card) {
-      const modeId = card.getAttribute('data-mode-id')
+    if (item) {
+      const modeId = item.getAttribute('data-mode-id')
       if (!modeId) return
+      
+      // Select and Activate simultaneously
       selectedModeId = modeId
+      await window.electronAPI.setActiveMode(modeId)
+      cachedActiveModeId = modeId
+      cachedModes = null
+      await applyModeDefaultsIfActive(modeId)
       await rerender()
     }
   })
 
-  // editor events (delegated)
   editorEl.addEventListener('input', async (e) => {
     const s = await fetchModesState(true)
     const mode = sanitizeMode(s.modes.find(m => m.id === selectedModeId) || {})
     if (!mode.id) return
 
-    if (e.target.id === 'mode-name') {
-      mode.name = e.target.value
-    } else if (e.target.id === 'mode-model-search') {
+    if (e.target.id === 'mode-model-search') {
       const providerId = editorEl.querySelector('#mode-provider')?.value || ''
       await updateModeModelList(editorEl, providerId, mode.model)
       return
@@ -1019,22 +1211,9 @@ async function initModesView() {
   })
 
   editorEl.addEventListener('click', async (e) => {
-    if (e.target.id === 'mode-activate') {
-      await window.electronAPI.setActiveMode(selectedModeId)
-      cachedActiveModeId = selectedModeId
-      cachedModes = null
-      await applyModeDefaultsIfActive(selectedModeId)
-      await rerender()
-      return
-    }
-
-    if (e.target.id === 'mode-delete') {
-      if (!window.confirm('Delete this mode?')) return
-      await window.electronAPI.deleteMode(selectedModeId)
-      cachedModes = null
-      const s = await fetchModesState(true)
-      selectedModeId = s.activeModeId
-      await rerender()
+    const resetPromptBtn = e.target.closest('#mode-reset-prompt')
+    if (resetPromptBtn) {
+      document.getElementById('reset-prompt-modal')?.classList.add('open')
       return
     }
 
@@ -1066,7 +1245,6 @@ async function updateProviderDependentUI(container, providerId) {
   const modelSearch = container.querySelector('#config-model-search')
   const apiKeyCard = container.querySelector('#config-api-key-card')
 
-  // Hide API key section for local providers (ollama, lm-studio)
   const isLocalProvider = providerId === 'ollama' || providerId === 'lm-studio'
   if (apiKeyCard) {
     apiKeyCard.style.display = isLocalProvider ? 'none' : 'block'
@@ -1093,12 +1271,40 @@ async function updateProviderDependentUI(container, providerId) {
   const models = extractModelsFromProviderMeta(providerMeta)
     .sort((a, b) => (a.id || '').localeCompare(b.id || ''))
 
-  const query = (modelSearch?.value || '').trim().toLowerCase()
-  let filteredModels = query
-    ? models.filter(m => (m.id || '').toLowerCase().includes(query))
-    : models
+  const query = (modelSearch?.value || '').trim()
 
-  // Always keep the selected model at the top (when it exists)
+  let filteredModels
+  if (!query) {
+    filteredModels = models
+  } else {
+    filteredModels = models
+      .map(m => ({ model: m, match: scoreModelMatch(m, query) }))
+      .filter(x => x.match)
+      .sort((a, b) => {
+        if (b.match.score !== a.match.score) return b.match.score - a.match.score
+        return (a.model.id || '').localeCompare(b.model.id || '')
+      })
+      .map(x => x.model)
+  }
+
+  if (query && filteredModels.length === 0) {
+    const q = normalizeSearchText(query)
+    const best = models
+      .map(m => ({ m, id: normalizeSearchText(m.id), name: normalizeSearchText(m.name) }))
+      .map(x => {
+        const candidates = [x.id, x.name].filter(Boolean)
+        const hit = candidates.some(c => (c.noSpace && q.noSpace && (c.noSpace.includes(q.noSpace) || q.noSpace.includes(c.noSpace))))
+        return { model: x.m, hit }
+      })
+      .find(x => x.hit)?.model
+
+    if (best) {
+      setStatus(modelStatus, `No models found. Try: ${best.id}`, null)
+    } else {
+      setStatus(modelStatus, 'No models found.', null)
+    }
+  }
+
   if (selectedModelId) {
     const selectedIndex = filteredModels.findIndex(m => m.id === selectedModelId)
     if (selectedIndex > 0) {
@@ -1125,7 +1331,6 @@ async function updateProviderDependentUI(container, providerId) {
       })
       .join('')
 
-    // Inject check icons
     modelList.querySelectorAll('[data-icon="check"]').forEach(el => {
       insertIcon(el, 'check')
     })
@@ -1195,7 +1400,6 @@ async function initConfigurationView() {
 
   const getSelectedProvider = () => providerSelect?.value || state.activeProvider || state.providers?.[0]?.id || ''
 
-  // Load and apply non-provider settings
   try {
     const [sessionSettingsResult, startCollapsedResult, screenshotModeResult, excludeResult] = await Promise.all([
       window.electronAPI.getSessionSettings(),
@@ -1296,7 +1500,6 @@ async function initConfigurationView() {
       return
     }
 
-    // Persist first since validation reads from config
     await window.electronAPI.saveApiKey(providerId, apiKey)
 
     setStatus(keyStatus, 'Testing…', null)
@@ -1313,22 +1516,14 @@ async function initConfigurationView() {
 
   const scheduleAutoTest = () => {
     if (!keyInput) return
-
     const providerId = getSelectedProvider()
-    // Skip local providers (no API key required)
     if (providerId === 'ollama' || providerId === 'lm-studio') return
-
     const apiKey = (keyInput.value || '').trim()
-
-    // Avoid redundant re-tests for same value
     if (lastAutoTest.providerId === providerId && lastAutoTest.apiKey === apiKey) return
-
     if (keyAutoTestTimer) {
       clearTimeout(keyAutoTestTimer)
       keyAutoTestTimer = null
     }
-
-    // Debounce to avoid spamming validation on every keystroke
     keyAutoTestTimer = setTimeout(() => {
       lastAutoTest = { providerId, apiKey }
       autoTestKey().catch(console.error)
@@ -1336,33 +1531,24 @@ async function initConfigurationView() {
     }, 500)
   }
 
-  // Auto-test when user pastes a key
   keyInput?.addEventListener('paste', () => {
-    setTimeout(() => {
-      scheduleAutoTest()
-    }, 0)
+    setTimeout(() => { scheduleAutoTest() }, 0)
   })
 
-  // Auto-test whenever the key value changes
   keyInput?.addEventListener('input', () => {
     scheduleAutoTest()
   })
 
-  // If user leaves the field, validate immediately (no debounce)
   keyInput?.addEventListener('blur', () => {
     if (!keyInput) return
-
     if (keyAutoTestTimer) {
       clearTimeout(keyAutoTestTimer)
       keyAutoTestTimer = null
     }
-
     const providerId = getSelectedProvider()
     if (providerId === 'ollama' || providerId === 'lm-studio') return
-
     const apiKey = (keyInput.value || '').trim()
     lastAutoTest = { providerId, apiKey }
-
     autoTestKey().catch(console.error)
   })
 
@@ -1391,11 +1577,8 @@ async function initConfigurationView() {
       setStatus(modelStatus, result?.error || 'Failed to refresh models.', 'bad')
       return
     }
-
-    // Re-fetch provider metadata after refresh
     cachedProvidersMeta = null
     await fetchConfigurationState(true)
-    // Keep provider selection as-is
     if (providerSelect) providerSelect.value = providerId
     await updateProviderDependentUI(container, providerId)
     setStatus(modelStatus, 'Models refreshed.', 'good')
@@ -1408,25 +1591,18 @@ async function initConfigurationView() {
   modelList?.addEventListener('click', async (e) => {
     const item = e.target.closest('.model-item')
     if (!item) return
-
     const providerId = getSelectedProvider()
     const modelId = item.dataset.modelId
     if (!providerId || !modelId) return
-
     setStatus(modelStatus, 'Saving…', null)
-
     const providerConfigResult = await window.electronAPI.getProviderConfig(providerId)
     const providerConfig = providerConfigResult?.success ? (providerConfigResult.config || {}) : {}
-
     await window.electronAPI.setProviderConfig(providerId, { ...providerConfig, model: modelId })
     setStatus(modelStatus, 'Saved.', 'good')
-
     await updateProviderDependentUI(container, providerId)
   })
 
-  // Initial render of dependent bits
   await updateProviderDependentUI(container, getSelectedProvider())
-
   configViewInitialized = true
 }
 
@@ -1442,7 +1618,6 @@ function wireNavigation() {
       navModes?.classList.remove('active')
       navConfiguration?.classList.remove('active')
       navShortcuts?.classList.remove('active')
-      
       showView('view-sessions')
     })
   }
@@ -1453,9 +1628,7 @@ function wireNavigation() {
       navConfiguration?.classList.remove('active')
       navShortcuts?.classList.remove('active')
       navModes.classList.add('active')
-
       showView('view-modes')
-
       if (!modesViewInitialized) {
         await initModesView()
       }
@@ -1468,9 +1641,7 @@ function wireNavigation() {
       navModes?.classList.remove('active')
       navShortcuts?.classList.remove('active')
       navConfiguration.classList.add('active')
-
       showView('view-configuration')
-
       if (!configViewInitialized) {
         await initConfigurationView()
       }
@@ -1483,7 +1654,6 @@ function wireNavigation() {
       navModes?.classList.remove('active')
       navConfiguration?.classList.remove('active')
       navShortcuts.classList.add('active')
-
       showView('view-shortcuts')
     })
   }
@@ -1492,14 +1662,12 @@ function wireNavigation() {
 async function init() {
   await initIcons()
 
-  // Inject icons
   document.querySelectorAll('[data-icon]').forEach(el => {
     insertIcon(el, el.dataset.icon, el.classList.contains('nav-icon') || el.classList.contains('search-icon') ? undefined : 'icon-svg')
   })
 
   const newChatBtn = document.getElementById('new-chat')
   const savedBtn = document.getElementById('saved-messages')
-  // selectBtn removed
   const searchInput = document.getElementById('search-input')
   const checkUpdateBtn = document.getElementById('check-update')
   const reportBugBtn = document.getElementById('report-bug')
@@ -1511,8 +1679,6 @@ async function init() {
   
   savedBtn?.addEventListener('click', () => {
     showingSaved = !showingSaved
-    
-    // Update button text/state
     if (savedBtn) {
       savedBtn.innerHTML = `<span class="nav-icon" data-icon="save"></span> ${showingSaved ? 'All Chats' : 'Saved'}`
       insertIcon(savedBtn.querySelector('.nav-icon'), 'save')
@@ -1522,7 +1688,6 @@ async function init() {
         savedBtn.classList.remove('active')
       }
     }
-
     const searchInput = document.getElementById('search-input')
     if (searchInput) {
       searchInput.value = ''
@@ -1530,19 +1695,15 @@ async function init() {
     loadSessions().catch(console.error)
   })
 
-  // selectBtn listener removed
-
   minimizeBtn?.addEventListener('click', () => window.electronAPI.minimizeDashboard?.())
   closeBtn?.addEventListener('click', () => window.electronAPI.closeDashboard?.())
 
   searchInput?.addEventListener('input', (e) => {
     const value = e.target.value
-
     if (searchTimer) {
       clearTimeout(searchTimer)
       searchTimer = null
     }
-
     searchTimer = setTimeout(() => {
       loadSessions(value).catch(console.error)
       searchTimer = null
@@ -1554,9 +1715,9 @@ async function init() {
       const result = await window.electronAPI.checkForUpdates()
       if (result.updateAvailable) {
         showToast(`Update available: v${result.version}`, 'info', 5000)
-      } else {
-        showToast('You are running the latest version.', 'success')
-      }
+       } else {
+         showToast('You are running the latest version.', 'info')
+       }
     } catch (error) {
       console.error('Update check failed:', error)
       showToast('Failed to check for updates. Please try again later.', 'error')
@@ -1575,7 +1736,6 @@ async function init() {
     handleNewChat().catch(console.error)
   })
 
-  // Rename modal wiring
   const renameModal = document.getElementById('rename-modal')
   const renameInput = document.getElementById('rename-input')
   const renameCancel = document.getElementById('rename-cancel')

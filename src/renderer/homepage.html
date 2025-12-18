@@ -124,6 +124,26 @@
       justify-content: center;
       flex-shrink: 0;
     }
+
+    .mini-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: var(--radius-sm);
+      color: var(--text-tertiary);
+      cursor: pointer;
+      transition: all var(--duration-quick) var(--easing);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .mini-btn:hover {
+      background: rgba(0, 0, 0, 0.28);
+      border-color: rgba(255, 255, 255, 0.16);
+      color: var(--text-primary);
+    }
     
     .nav-btn.active .nav-icon {
       color: #0c0e12;
@@ -765,52 +785,55 @@
 
     /* Modes view */
     .modes-root {
-      display: grid;
-      grid-template-columns: 360px 1fr;
-      gap: var(--space-16);
-      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-20);
+      overflow-y: auto;
       flex: 1;
-      min-height: 0;
+      padding-right: 6px;
     }
+
+    .modes-root::-webkit-scrollbar { width: 8px; }
+    .modes-root::-webkit-scrollbar-track { background: transparent; }
+    .modes-root::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-sm); }
 
     .modes-list {
       display: flex;
       flex-direction: column;
-      min-height: 0;
-      overflow: hidden;
+      gap: var(--space-12);
+      flex-shrink: 0;
     }
 
     .modes-editor {
-      min-height: 0;
-      overflow: auto;
-      padding-right: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-16);
+      flex-shrink: 0;
     }
 
-    .mode-card {
+    .mode-item {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: var(--space-12);
-      padding: var(--space-12) var(--space-16);
-      border-radius: var(--radius-lg);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      background: rgba(255, 255, 255, 0.02);
+      align-items: center;
+      padding: var(--space-8) var(--space-12);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
       cursor: pointer;
       transition: all var(--duration-quick) var(--easing);
-      margin-bottom: var(--space-8);
+      color: var(--text-secondary);
     }
 
-    .mode-card:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.12);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-elev-1);
-    }
-
-    .mode-card.active {
-      border-color: rgba(255, 255, 255, 0.18);
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+    .mode-item:hover {
       background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+    }
+
+    .mode-item.active {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--accent);
+      color: var(--text-primary);
+      outline: 1px solid var(--accent);
     }
 
     .mode-meta {
@@ -821,7 +844,7 @@
     }
 
     .mode-name {
-      font-weight: 700;
+      font-weight: 600;
       font-size: 14px;
       color: var(--text-primary);
       white-space: nowrap;
@@ -842,6 +865,15 @@
       align-items: center;
       gap: var(--space-8);
       flex-shrink: 0;
+    }
+
+    .mode-item .icon-mini {
+      opacity: 0;
+      transition: opacity var(--duration-quick) var(--easing);
+    }
+
+    .mode-item:hover .icon-mini {
+      opacity: 1;
     }
 
     .pill.small {
@@ -983,10 +1015,11 @@
       position: absolute;
       cursor: pointer;
       inset: 0;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 999px;
       transition: all var(--duration-quick) var(--easing);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
     }
 
     .toggle-slider::before {
@@ -997,20 +1030,24 @@
       left: 3px;
       top: 50%;
       transform: translateY(-50%);
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.88);
       border-radius: 999px;
       transition: all var(--duration-quick) var(--easing);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
     }
 
     .toggle-switch input:checked + .toggle-slider {
-      background: rgba(182, 179, 180, 0.26);
-      border-color: rgba(182, 179, 180, 0.36);
+      background: rgba(182, 179, 180, 0.32);
+      border-color: rgba(182, 179, 180, 0.50);
+      box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.18),
+        0 0 14px rgba(182, 179, 180, 0.14);
     }
 
     .toggle-switch input:checked + .toggle-slider::before {
       transform: translate(20px, -50%);
       background: var(--accent-strong);
+      box-shadow: 0 8px 22px rgba(182, 179, 180, 0.22);
     }
 
     .toggle-switch input:focus-visible + .toggle-slider {
@@ -1104,7 +1141,7 @@
       <div class="sidebar-footer">
         <div class="social-links">
           <a href="https://github.com/project-ghostpad" class="social-link" data-icon="github" title="GitHub" target="_blank"></a>
-          <a href="#" class="social-link" data-icon="x" title="X" target="_blank"></a>
+          <a href="#" class="social-link" data-icon="X" title="X" target="_blank"></a>
           <a href="#" class="social-link" data-icon="website" title="Website" target="_blank"></a>
         </div>
         <div class="footer-actions">
@@ -1174,22 +1211,28 @@
         </div>
 
         <div id="modes-root" class="modes-root" aria-label="Modes">
-          <div class="modes-list">
-            <div class="search" style="margin-bottom: var(--space-12);">
-              <span class="search-icon" data-icon="search"></span>
-              <input id="modes-search" type="text" placeholder="Search modes" autocomplete="off" />
-            </div>
-            <div class="quick-actions" style="margin-bottom: var(--space-12);">
-              <button id="mode-new" class="action-btn primary" type="button">
-                <span class="nav-icon" data-icon="newchat"></span>
-                New mode
+          <div class="config-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-12);">
+              <div>
+                <h2>Select Mode</h2>
+                <p>Choose a mode to edit its configuration.</p>
+              </div>
+              <button id="mode-new" class="action-btn primary" type="button" title="New mode" style="width: 34px; height: 34px; padding: 0; min-width: 34px; flex-shrink: 0; justify-content: center;">
+                <span class="nav-icon" data-icon="plus"></span>
               </button>
             </div>
-            <div id="modes-list" class="content" aria-label="Mode list" style="padding: 0;"></div>
+
+            <div id="modes-list" class="model-list" style="max-height: 240px; margin-top: 0;"></div>
+            <div style="margin-top: var(--space-12); display: flex; justify-content: flex-end;">
+              <button id="modes-restore-defaults" class="mini-btn danger" type="button" style="font-size: 11px; padding: 4px 10px; background: transparent; border-color: rgba(255,107,107,0.2);">
+                <span class="nav-icon" data-icon="refresh" style="width: 12px; height: 12px; margin-right: 4px;"></span>
+                Restore Defaults
+              </button>
+            </div>
           </div>
 
-          <div class="modes-editor">
-            <div id="mode-editor" class="config-card" style="margin-bottom: 0;"></div>
+          <div id="mode-editor" class="modes-editor">
+            <!-- Mode editor content will be injected here -->
           </div>
         </div>
       </div>
@@ -1286,6 +1329,38 @@
       <div class="modal-actions">
         <button id="rename-cancel" class="mini-btn" type="button">Cancel</button>
         <button id="rename-save" class="mini-btn primary" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="restore-modes-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Restore default modes">
+    <div class="modal">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,107,107,0.1); display: flex; align-items: center; justify-content: center; color: var(--danger);">
+          <span class="nav-icon" data-icon="refresh" style="width: 20px; height: 20px;"></span>
+        </div>
+        <h2 style="margin: 0;">Restore Defaults?</h2>
+      </div>
+      <p>This will delete all custom modes and reset default modes to their original settings. This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button id="restore-modes-cancel" class="mini-btn" type="button">Cancel</button>
+        <button id="restore-modes-confirm" class="mini-btn danger" type="button" style="background: var(--danger); color: white; border: none; font-weight: 600;">Reset Everything</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="reset-prompt-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Reset system prompt">
+    <div class="modal">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,107,107,0.1); display: flex; align-items: center; justify-content: center; color: var(--danger);">
+          <span class="nav-icon" data-icon="refresh" style="width: 20px; height: 20px;"></span>
+        </div>
+        <h2 style="margin: 0;">Reset Prompt?</h2>
+      </div>
+      <p>This will revert the system prompt for this mode to its original factory setting. Your provider and model selections will not be changed.</p>
+      <div class="modal-actions">
+        <button id="reset-prompt-cancel" class="mini-btn" type="button">Cancel</button>
+        <button id="reset-prompt-confirm" class="mini-btn danger" type="button" style="background: var(--danger); color: white; border: none; font-weight: 600;">Reset Prompt</button>
       </div>
     </div>
   </div>

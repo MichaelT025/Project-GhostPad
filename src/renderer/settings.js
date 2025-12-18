@@ -3,7 +3,7 @@
  * Handles provider configuration, API keys, and preferences
  */
 
-import { getIcon, initIcons } from './assets/icons/icons.js';
+import { initIcons, insertIcon } from './assets/icons/icons.js';
 
 // Default system prompt for screenshot analysis
 const DEFAULT_SYSTEM_PROMPT = `
@@ -44,7 +44,6 @@ Stay accurate and grounded at all times.
 
 Memory:
 Use the recent messages to maintain coherent context.
-
 `
 
 // Current settings state
@@ -86,6 +85,7 @@ async function loadProviderMetadata() {
  */
 function populateProviderDropdown() {
   const providerSelect = document.getElementById('provider-select')
+  if (!providerSelect) return
   providerSelect.innerHTML = '' // Clear existing options
 
   // Add option for each provider in registry
@@ -96,7 +96,7 @@ function populateProviderDropdown() {
     providerSelect.appendChild(option)
   }
 
-  console.log('Provider dropdown populated with', Object.keys(providerRegistry).length, 'providers')
+  console.log('Provider dropdown populated')
 }
 
 /**
@@ -104,6 +104,7 @@ function populateProviderDropdown() {
  */
 function generateProviderSections() {
   const container = document.getElementById('provider-sections-container')
+  if (!container) return
   container.innerHTML = '' // Clear existing content
 
   // Generate section for each provider in registry
@@ -119,9 +120,9 @@ function generateProviderSections() {
           ${Object.entries(provider.models).map(([modelId, modelMeta]) => {
             const isActive = currentSettings.providers[providerId]?.model === modelId
             return `
-              <div class="model-item $\{isActive ? 'active' : ''}" data-model-id="$\{modelId}" onclick="selectModel('$\{providerId}', '$\{modelId}')">
-                <span style="font-size: 13px; font-weight: 500;">$\{modelMeta.name || modelId}</span>
-                $\{isActive ? '<span class="nav-icon" data-icon="check" style="color: var(--accent); width: 14px; height: 14px;"></span>' : ''}
+              <div class="model-item ${isActive ? 'active' : ''}" data-model-id="${modelId}" onclick="window.selectModel('${providerId}', '${modelId}')">
+                <span style="font-size: 13px; font-weight: 500;">${modelMeta.name || modelId}</span>
+                ${isActive ? '<span class="nav-icon" data-icon="check" style="color: var(--accent); width: 14px; height: 14px;"></span>' : ''}
               </div>
             `
           }).join('')}
@@ -137,7 +138,7 @@ function generateProviderSections() {
         <div class="form-description">Get your API key from <a href="${provider.website}" target="_blank" style="color: var(--accent);">${provider.name}</a></div>
         <div class="api-key-input-wrapper">
           <input type="password" id="${providerId}-api-key" placeholder="Enter your ${provider.name} API key">
-          <button class="toggle-visibility" onclick="togglePasswordVisibility('${providerId}-api-key')">Show</button>
+          <button class="toggle-visibility" onclick="window.togglePasswordVisibility('${providerId}-api-key')">Show</button>
         </div>
       </div>
 
@@ -148,20 +149,24 @@ function generateProviderSections() {
          <div style="font-size: 11px; color: rgba(255, 255, 255, 0.5); margin-top: 6px;">
            Note: Some models don't support screenshots and some models might not work with this application.
          </div>
-         <button class="btn-refresh-models" onclick="refreshProviderModels('${providerId}')" style="margin-top: 8px;">
+         <button class="btn-refresh-models" onclick="window.refreshProviderModels('${providerId}')" style="margin-top: 8px;">
            <span class="refresh-icon">↻</span> Refresh Models
          </button>
        </div>
+
+      ${provider.baseUrl ? `
+        <div class="form-group">
+          <label for="${providerId}-baseurl">Base URL</label>
+          <input type="text" id="${providerId}-baseurl" placeholder="${provider.baseUrl}">
+        </div>
       ` : ''}
 
-      <button class="btn-test" onclick="testProvider('${providerId}')">Test Connection</button>
+      <button class="btn-test" onclick="window.testProvider('${providerId}')">Test Connection</button>
       <div id="${providerId}-status" class="status-message"></div>
     `
 
     container.appendChild(section)
   }
-
-  console.log('Provider sections generated')
 }
 
 /**
@@ -218,24 +223,18 @@ async function init() {
  */
 async function loadSettings() {
   try {
-    // Get active provider
     const activeProviderResult = await window.electronAPI.getActiveProvider()
-    // Fallback to first available provider from registry
     const firstProvider = Object.keys(providerRegistry)[0] || 'gemini'
     const activeProvider = activeProviderResult.provider || firstProvider
     currentSettings.activeProvider = activeProvider
 
-    // Load settings for each provider dynamically
     for (const providerId of Object.keys(providerRegistry)) {
-      // Get API key
       const keyResult = await window.electronAPI.getApiKey(providerId)
       const apiKey = keyResult.apiKey || ''
 
-      // Get provider config
       const configResult = await window.electronAPI.getProviderConfig(providerId)
       const config = configResult.config || {}
 
-      // Store in currentSettings
       if (!currentSettings.providers[providerId]) {
         currentSettings.providers[providerId] = {}
       }
@@ -243,7 +242,6 @@ async function loadSettings() {
       currentSettings.providers[providerId].model = config.model || providerRegistry[providerId].defaultModel
       currentSettings.providers[providerId].baseUrl = config.baseUrl || ''
 
-      // Update form fields
       const apiKeyField = document.getElementById(`${providerId}-api-key`)
       const modelField = document.getElementById(`${providerId}-model`)
       const baseUrlField = document.getElementById(`${providerId}-baseurl`)
@@ -252,28 +250,22 @@ async function loadSettings() {
       if (modelField) {
         modelField.value = currentSettings.providers[providerId].model
       } else {
-        // If no modelField, it might be using model-list
         selectModel(providerId, currentSettings.providers[providerId].model)
       }
       if (baseUrlField) baseUrlField.value = currentSettings.providers[providerId].baseUrl
     }
 
-    // Get system prompt from active provider config
     const activeConfig = currentSettings.providers[activeProvider] || {}
     currentSettings.systemPrompt = activeConfig.systemPrompt || DEFAULT_SYSTEM_PROMPT
 
-    // Update UI fields
     document.getElementById('provider-select').value = activeProvider
     document.getElementById('system-prompt').value = currentSettings.systemPrompt
 
-    // Load memory settings
     const memorySettingsResult = await window.electronAPI.getMemorySettings()
     if (memorySettingsResult.success) {
       currentSettings.historyLimit = memorySettingsResult.settings.historyLimit || 10
       document.getElementById('history-limit').value = currentSettings.historyLimit
     }
-
-    console.log('Settings loaded:', { activeProvider, providers: Object.keys(currentSettings.providers), historyLimit: currentSettings.historyLimit })
   } catch (error) {
     console.error('Failed to load settings:', error)
     showStatus('save-status', 'Failed to load settings', 'error')
@@ -288,11 +280,9 @@ async function loadDisplays() {
     const result = await window.electronAPI.getDisplays()
     const displays = result.displays || []
     const displaySelect = document.getElementById('display-select')
+    if (!displaySelect) return
 
-    // Clear existing options
     displaySelect.innerHTML = ''
-
-    // Add display options
     displays.forEach((display, index) => {
       const option = document.createElement('option')
       option.value = index
@@ -300,7 +290,6 @@ async function loadDisplays() {
       displaySelect.appendChild(option)
     })
 
-    // Select primary display
     const primaryIndex = displays.findIndex(d => d.primary)
     if (primaryIndex !== -1) {
       displaySelect.value = primaryIndex
@@ -315,22 +304,19 @@ async function loadDisplays() {
  * Set up event listeners
  */
 function setupEventListeners() {
-  // Provider selection change
-  document.getElementById('provider-select').addEventListener('change', (e) => {
+  const providerSelect = document.getElementById('provider-select')
+  providerSelect?.addEventListener('change', (e) => {
     currentSettings.activeProvider = e.target.value
     updateProviderUI()
   })
 
-  // Display selection change
-  document.getElementById('display-select').addEventListener('change', (e) => {
+  const displaySelect = document.getElementById('display-select')
+  displaySelect?.addEventListener('change', (e) => {
     currentSettings.primaryDisplay = parseInt(e.target.value)
   })
 
-  // Set up listeners for each provider dynamically
   const timeouts = {}
-
   for (const providerId of Object.keys(providerRegistry)) {
-    // API key input listener (debounced auto-test)
     const apiKeyField = document.getElementById(`${providerId}-api-key`)
     if (apiKeyField) {
       apiKeyField.addEventListener('input', (e) => {
@@ -342,7 +328,6 @@ function setupEventListeners() {
               currentSettings.providers[providerId] = {}
             }
             currentSettings.providers[providerId].apiKey = apiKey
-            // Save the API key immediately before testing
             await window.electronAPI.saveApiKey(providerId, apiKey)
             testProvider(providerId)
           }, 1000)
@@ -350,7 +335,6 @@ function setupEventListeners() {
       })
     }
 
-    // Model selection change
     const modelField = document.getElementById(`${providerId}-model`)
     if (modelField) {
       modelField.addEventListener('change', (e) => {
@@ -361,7 +345,6 @@ function setupEventListeners() {
       })
     }
 
-    // Base URL input (for custom provider)
     const baseUrlField = document.getElementById(`${providerId}-baseurl`)
     if (baseUrlField) {
       baseUrlField.addEventListener('input', (e) => {
@@ -373,8 +356,7 @@ function setupEventListeners() {
     }
   }
 
-  // Mode selection change
-  document.getElementById('mode-select').addEventListener('change', (e) => {
+  document.getElementById('mode-select')?.addEventListener('change', (e) => {
     currentSettings.selectedMode = e.target.value
     updateModeUI()
   })
@@ -389,7 +371,6 @@ function selectModel(providerId, modelId) {
   }
   currentSettings.providers[providerId].model = modelId
 
-  // Update UI
   const list = document.getElementById(`${providerId}-model-list`)
   if (list) {
     list.querySelectorAll('.model-item').forEach(el => {
@@ -421,7 +402,6 @@ window.selectModel = selectModel
 function updateProviderUI() {
   const provider = currentSettings.activeProvider
 
-  // Hide all provider sections dynamically
   for (const providerId of Object.keys(providerRegistry)) {
     const section = document.getElementById(`${providerId}-section`)
     if (section) {
@@ -429,13 +409,11 @@ function updateProviderUI() {
     }
   }
 
-  // Show selected provider section
   const activeSection = document.getElementById(`${provider}-section`)
   if (activeSection) {
     activeSection.style.display = 'block'
   }
 
-  // Update provider info box if it exists
   const providerInfoEl = document.getElementById('current-provider-info')
   if (providerInfoEl && providerRegistry[provider]) {
     const providerMeta = providerRegistry[provider]
@@ -452,57 +430,23 @@ function updateProviderUI() {
 }
 
 /**
- * Select a model for a provider
- */
-function selectModel(providerId, modelId) {
-  if (!currentSettings.providers[providerId]) {
-    currentSettings.providers[providerId] = {}
-  }
-  currentSettings.providers[providerId].model = modelId
-
-  // Update UI: remove active class from all items and add to selected one
-  const list = document.getElementById(`${providerId}-model-list`)
-  if (list) {
-    list.querySelectorAll('.model-item').forEach(el => {
-      el.classList.remove('active')
-      // Remove checkmark if exists
-      const check = el.querySelector('[data-icon="check"]')
-      if (check) check.remove()
-    })
-
-    const selectedItem = list.querySelector(`.model-item[data-model-id="${modelId}"]`)
-    if (selectedItem) {
-      selectedItem.classList.add('active')
-      // Add checkmark
-      const check = document.createElement('span')
-      check.className = 'nav-icon'
-      check.dataset.icon = 'check'
-      check.style.color = 'var(--accent)'
-      check.style.width = '16px'
-      check.style.height = '16px'
-      selectedItem.appendChild(check)
-      initIcons() // Re-initialize icons
-    }
-  }
-}
-
-window.selectModel = selectModel
-
-/**
  * Toggle password visibility
  */
 function togglePasswordVisibility(inputId) {
   const input = document.getElementById(inputId)
+  if (!input) return
   const button = input.nextElementSibling
 
   if (input.type === 'password') {
     input.type = 'text'
-    button.textContent = 'Hide'
+    if (button) button.textContent = 'Hide'
   } else {
     input.type = 'password'
-    button.textContent = 'Show'
+    if (button) button.textContent = 'Show'
   }
 }
+
+window.togglePasswordVisibility = togglePasswordVisibility
 
 /**
  * Test provider connection
@@ -510,27 +454,26 @@ function togglePasswordVisibility(inputId) {
 async function testProvider(provider) {
   const statusEl = document.getElementById(`${provider}-status`)
   const apiKeyInput = document.getElementById(`${provider}-api-key`)
-  const apiKey = apiKeyInput.value.trim()
+  const apiKey = apiKeyInput ? apiKeyInput.value.trim() : ''
 
-  if (!apiKey) {
+  if (!apiKey && provider !== 'custom' && provider !== 'ollama' && provider !== 'lm-studio') {
     showStatus(`${provider}-status`, 'Please enter an API key first', 'error')
     return
   }
 
   try {
-    // Show testing message
-    statusEl.className = 'status-message'
-    statusEl.style.display = 'block'
-     statusEl.style.background = 'rgba(182, 179, 180, 0.14)'
-     statusEl.style.borderColor = 'rgba(182, 179, 180, 0.28)'
-     statusEl.style.color = '#d7d4d5'
-    statusEl.textContent = 'Testing connection...'
+    if (statusEl) {
+      statusEl.className = 'status-message'
+      statusEl.style.display = 'block'
+      statusEl.style.background = 'rgba(182, 179, 180, 0.14)'
+      statusEl.style.borderColor = 'rgba(182, 179, 180, 0.28)'
+      statusEl.style.color = '#d7d4d5'
+      statusEl.textContent = 'Testing connection...'
+    }
 
-    // Validate API key (this will make a test request)
     const result = await window.electronAPI.validateApiKey(provider)
-
     if (result.isValid) {
-      showStatus(`${provider}-status`, `✓ Connection successful! Using ${provider} API`, 'success')
+      showStatus(`${provider}-status`, `✓ Connection successful!`, 'success')
     } else {
       showStatus(`${provider}-status`, `✗ Invalid API key: ${result.error || 'Authentication failed'}`, 'error')
     }
@@ -540,6 +483,8 @@ async function testProvider(provider) {
   }
 }
 
+window.testProvider = testProvider
+
 /**
  * Save settings
  */
@@ -548,53 +493,40 @@ async function saveSettings() {
     const activeProvider = document.getElementById('provider-select').value
     const systemPrompt = document.getElementById('system-prompt').value.trim() || DEFAULT_SYSTEM_PROMPT
 
-    // Iterate through all providers dynamically
     for (const providerId of Object.keys(providerRegistry)) {
       const apiKeyField = document.getElementById(`${providerId}-api-key`)
       const modelField = document.getElementById(`${providerId}-model`)
       const baseUrlField = document.getElementById(`${providerId}-baseurl`)
 
       const apiKey = apiKeyField ? apiKeyField.value.trim() : ''
-      const model = modelField ? modelField.value : providerRegistry[providerId].defaultModel
+      const model = modelField ? modelField.value : currentSettings.providers[providerId].model
       const baseUrl = baseUrlField ? baseUrlField.value.trim() : ''
 
-      // Validate that active provider has an API key (unless it's custom)
-      if (providerId === activeProvider && !apiKey && providerId !== 'custom') {
+      if (providerId === activeProvider && !apiKey && providerId !== 'custom' && providerId !== 'ollama' && providerId !== 'lm-studio') {
         const providerName = providerRegistry[providerId].name
         showStatus('save-status', `Please enter a ${providerName} API key`, 'error')
         return
       }
 
-      // Save API key if provided
       if (apiKey) {
         await window.electronAPI.saveApiKey(providerId, apiKey)
       }
 
-      // Build provider config
       const config = { model, systemPrompt }
-      if (baseUrl) {
-        config.baseUrl = baseUrl
-      }
-
-      // Save provider configuration
+      if (baseUrl) config.baseUrl = baseUrl
       await window.electronAPI.setProviderConfig(providerId, config)
     }
 
-    // Set active provider
     await window.electronAPI.setActiveProvider(activeProvider)
-
-    // Show success message
     showStatus('save-status', '✓ Settings saved successfully!', 'success')
-
-    // Close window after short delay
-    setTimeout(() => {
-      window.close()
-    }, 1500)
+    setTimeout(() => window.close(), 1500)
   } catch (error) {
     console.error('Save settings error:', error)
     showStatus('save-status', `Failed to save settings: ${error.message}`, 'error')
   }
 }
+
+window.saveSettings = saveSettings
 
 /**
  * Close settings window
@@ -603,13 +535,17 @@ function closeSettings() {
   window.close()
 }
 
+window.closeSettings = closeSettings
+
 /**
  * Show status message
  */
 function showStatus(elementId, message, type) {
   const statusEl = document.getElementById(elementId)
+  if (!statusEl) return
   statusEl.textContent = message
   statusEl.className = `status-message ${type}`
+  statusEl.style.display = 'block'
 }
 
 /**
@@ -625,8 +561,8 @@ async function loadModes() {
     currentSettings.modes = modes
     currentSettings.selectedMode = activeModeId
 
-    // Populate mode dropdown
     const modeSelect = document.getElementById('mode-select')
+    if (!modeSelect) return
     modeSelect.innerHTML = ''
 
     modes.forEach(mode => {
@@ -636,13 +572,8 @@ async function loadModes() {
       modeSelect.appendChild(option)
     })
 
-    // Select the active mode
     modeSelect.value = activeModeId
-
-    // Update UI for selected mode
     updateModeUI()
-
-    console.log('Modes loaded:', { count: modes.length, active: activeModeId })
   } catch (error) {
     console.error('Failed to load modes:', error)
   }
@@ -654,33 +585,30 @@ async function loadModes() {
 function updateModeUI() {
   const selectedModeId = currentSettings.selectedMode
   const mode = currentSettings.modes.find(m => m.id === selectedModeId)
-
   if (!mode) return
 
-  // Show/hide mode name field (only for custom modes)
   const modeNameContainer = document.getElementById('mode-name-container')
   const modeNameInput = document.getElementById('mode-name')
   const deleteBtn = document.getElementById('delete-mode-btn')
 
   if (mode.isDefault) {
-    modeNameContainer.style.display = 'none'
-    deleteBtn.disabled = true
-    modeNameInput.value = ''
+    if (modeNameContainer) modeNameContainer.style.display = 'none'
+    if (deleteBtn) deleteBtn.disabled = true
+    if (modeNameInput) modeNameInput.value = ''
   } else {
-    modeNameContainer.style.display = 'block'
-    deleteBtn.disabled = false
-    modeNameInput.value = mode.name
+    if (modeNameContainer) modeNameContainer.style.display = 'block'
+    if (deleteBtn) deleteBtn.disabled = false
+    if (modeNameInput) modeNameInput.value = mode.name
   }
 
-  // Load mode prompt
-  document.getElementById('system-prompt').value = mode.prompt || ''
+  const promptField = document.getElementById('system-prompt')
+  if (promptField) promptField.value = mode.prompt || ''
 }
 
 /**
  * Create a new mode
  */
 function createNewMode() {
-  // Generate a unique ID
   const newId = 'mode-' + Date.now()
   const newMode = {
     id: newId,
@@ -689,64 +617,46 @@ function createNewMode() {
     isDefault: false
   }
 
-  // Add to modes array
   currentSettings.modes.push(newMode)
-
-  // Update dropdown
   const modeSelect = document.getElementById('mode-select')
-  const option = document.createElement('option')
-  option.value = newMode.id
-  option.textContent = newMode.name
-  modeSelect.appendChild(option)
-
-  // Select the new mode
-  modeSelect.value = newId
+  if (modeSelect) {
+    const option = document.createElement('option')
+    option.value = newMode.id
+    option.textContent = newMode.name
+    modeSelect.appendChild(option)
+    modeSelect.value = newId
+  }
+  
   currentSettings.selectedMode = newId
-
-  // Update UI
   updateModeUI()
-
-  // Focus on the name input
-  document.getElementById('mode-name').focus()
+  document.getElementById('mode-name')?.focus()
 }
+
+window.createNewMode = createNewMode
 
 /**
  * Delete the currently selected mode
  */
 async function deleteMode() {
   const modeId = currentSettings.selectedMode
+  if (modeId === 'default') return
 
-  if (modeId === 'default') {
-    showStatus('mode-save-status', 'Cannot delete default mode', 'error')
-    return
-  }
-
-  // Confirm deletion
-  if (!confirm('Are you sure you want to delete this mode?')) {
-    return
-  }
+  if (!confirm('Are you sure you want to delete this mode?')) return
 
   try {
-    // Delete from server
     await window.electronAPI.deleteMode(modeId)
-
-    // Remove from local array
     currentSettings.modes = currentSettings.modes.filter(m => m.id !== modeId)
-
-    // Update dropdown
     const modeSelect = document.getElementById('mode-select')
-    modeSelect.querySelector(`option[value="${modeId}"]`).remove()
-
-    // Select default mode
-    modeSelect.value = 'default'
+    if (modeSelect) {
+      modeSelect.querySelector(`option[value="${modeId}"]`)?.remove()
+      modeSelect.value = 'default'
+    }
     currentSettings.selectedMode = 'default'
-
-    // Update UI
     updateModeUI()
-
     showStatus('mode-save-status', 'Mode deleted successfully', 'success')
     setTimeout(() => {
-      document.getElementById('mode-save-status').style.display = 'none'
+      const el = document.getElementById('mode-save-status')
+      if (el) el.style.display = 'none'
     }, 2000)
   } catch (error) {
     console.error('Failed to delete mode:', error)
@@ -754,28 +664,25 @@ async function deleteMode() {
   }
 }
 
+window.deleteMode = deleteMode
+
 /**
  * Save memory settings
  */
 async function saveMemorySettings() {
   try {
     const historyLimit = parseInt(document.getElementById('history-limit').value)
-    
-    // Validate input
     if (isNaN(historyLimit) || historyLimit < 5 || historyLimit > 50) {
       showStatus('memory-status', 'Please enter a valid number between 5 and 50', 'error')
       return
     }
 
-    // Save to config
     await window.electronAPI.setHistoryLimit(historyLimit)
     currentSettings.historyLimit = historyLimit
-
     showStatus('memory-status', 'Memory settings saved successfully!', 'success')
-    
-    // Hide success message after 2 seconds
     setTimeout(() => {
-      document.getElementById('memory-status').style.display = 'none'
+      const el = document.getElementById('memory-status')
+      if (el) el.style.display = 'none'
     }, 2000)
   } catch (error) {
     console.error('Failed to save memory settings:', error)
@@ -783,7 +690,6 @@ async function saveMemorySettings() {
   }
 }
 
-// Make function globally accessible
 window.saveMemorySettings = saveMemorySettings
 
 /**
@@ -792,13 +698,8 @@ window.saveMemorySettings = saveMemorySettings
 async function saveCurrentMode() {
   const modeId = currentSettings.selectedMode
   const mode = currentSettings.modes.find(m => m.id === modeId)
+  if (!mode) return
 
-  if (!mode) {
-    showStatus('mode-save-status', 'Mode not found', 'error')
-    return
-  }
-
-  // Get values from inputs
   const prompt = document.getElementById('system-prompt').value.trim()
   const name = mode.isDefault ? 'Default' : document.getElementById('mode-name').value.trim()
 
@@ -806,123 +707,96 @@ async function saveCurrentMode() {
     showStatus('mode-save-status', 'Please enter a mode name', 'error')
     return
   }
-
   if (!prompt) {
     showStatus('mode-save-status', 'Please enter a system prompt', 'error')
     return
   }
 
-  // Update mode
   mode.name = name
   mode.prompt = prompt
 
   try {
-    // Save to server
     await window.electronAPI.saveMode(mode)
-
-    // Update dropdown text if name changed
     const modeSelect = document.getElementById('mode-select')
-    const option = modeSelect.querySelector(`option[value="${modeId}"]`)
-    if (option) {
-      option.textContent = name
+    if (modeSelect) {
+      const option = modeSelect.querySelector(`option[value="${modeId}"]`)
+      if (option) option.textContent = name
     }
-
     showStatus('mode-save-status', 'Mode saved successfully!', 'success')
-    document.getElementById('mode-save-status').style.display = 'block'
     setTimeout(() => {
-      document.getElementById('mode-save-status').style.display = 'none'
+      const el = document.getElementById('mode-save-status')
+      if (el) el.style.display = 'none'
     }, 2000)
   } catch (error) {
     console.error('Failed to save mode:', error)
     showStatus('mode-save-status', 'Failed to save mode: ' + error.message, 'error')
-    document.getElementById('mode-save-status').style.display = 'block'
   }
 }
 
+window.saveCurrentMode = saveCurrentMode
+
 /**
- * Refresh models for a provider by fetching from its API
- * @param {string} providerId - Provider ID
+ * Refresh models for a provider
  */
 async function refreshProviderModels(providerId) {
   const statusElement = document.getElementById(`${providerId}-refresh-status`)
-  const button = event.target.closest('.btn-refresh-models')
+  const button = event?.target?.closest('.btn-refresh-models')
 
   try {
-    // Show loading state
-    button.disabled = true
-    button.innerHTML = '<span class="refresh-icon">↻</span> Refreshing...'
-    statusElement.textContent = 'Fetching models...'
-    statusElement.className = 'status-message'
-    statusElement.style.display = 'block'
+    if (button) {
+      button.disabled = true
+      button.innerHTML = '<span class="refresh-icon">↻</span> Refreshing...'
+    }
+    if (statusElement) {
+      statusElement.textContent = 'Fetching models...'
+      statusElement.style.display = 'block'
+    }
 
-    // Call refresh API
-    const result = await window.electronAPI.refreshModels(providerId)
+    const keyResult = await window.electronAPI.getApiKey(providerId)
+    const apiKey = keyResult.apiKey || ''
+    const result = await window.electronAPI.refreshModels(providerId, apiKey)
 
     if (result.success) {
-      // Reload provider metadata to get updated models
       await loadProviderMetadata()
-
-      // Regenerate provider sections with new models
       generateProviderSections()
-
-      // Reload settings to repopulate fields
       await loadSettings()
-
-      // Update UI to show the current provider section
       updateProviderUI()
-
-      // Show success message
-      const newStatusElement = document.getElementById(`${providerId}-refresh-status`)
-      newStatusElement.textContent = `✓ Refreshed ${Object.keys(result.models).length} models`
-      newStatusElement.className = 'status-message success'
-      newStatusElement.style.display = 'block'
-
-      setTimeout(() => {
-        newStatusElement.style.display = 'none'
-      }, 3000)
+      
+      const newStatus = document.getElementById(`${providerId}-refresh-status`)
+      if (newStatus) {
+        newStatus.textContent = `✓ Refreshed ${Object.keys(result.models).length} models`
+        newStatus.className = 'status-message success'
+        setTimeout(() => newStatus.style.display = 'none', 3000)
+      }
     } else {
-      // Show error message
-      statusElement.textContent = `✗ ${result.error}`
-      statusElement.className = 'status-message error'
-      statusElement.style.display = 'block'
-
-      setTimeout(() => {
-        statusElement.style.display = 'none'
-      }, 5000)
-
-      // Re-enable button
-      button.disabled = false
-      button.innerHTML = '<span class="refresh-icon">↻</span> Refresh Models'
+      if (statusElement) {
+        statusElement.textContent = `✗ ${result.error}`
+        statusElement.className = 'status-message error'
+        setTimeout(() => statusElement.style.display = 'none', 5000)
+      }
+      if (button) {
+        button.disabled = false
+        button.innerHTML = '<span class="refresh-icon">↻</span> Refresh Models'
+      }
     }
   } catch (error) {
     console.error('Failed to refresh models:', error)
-    statusElement.textContent = `✗ ${error.message}`
-    statusElement.className = 'status-message error'
-    statusElement.style.display = 'block'
-
-    setTimeout(() => {
-      statusElement.style.display = 'none'
-    }, 5000)
-
-    // Re-enable button
-    button.disabled = false
-    button.innerHTML = '<span class="refresh-icon">↻</span> Refresh Models'
+    if (statusElement) {
+      statusElement.textContent = `✗ ${error.message}`
+      statusElement.className = 'status-message error'
+      setTimeout(() => statusElement.style.display = 'none', 5000)
+    }
+    if (button) {
+      button.disabled = false
+      button.innerHTML = '<span class="refresh-icon">↻</span> Refresh Models'
+    }
   }
 }
 
-// Initialize when DOM is ready
+window.refreshProviderModels = refreshProviderModels
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init)
 } else {
   init()
 }
-
-// Make functions available globally for onclick handlers
-window.togglePasswordVisibility = togglePasswordVisibility
-window.testProvider = testProvider
-window.saveSettings = saveSettings
-window.closeSettings = closeSettings
-window.createNewMode = createNewMode
-window.deleteMode = deleteMode
-window.saveCurrentMode = saveCurrentMode
-window.refreshProviderModels = refreshProviderModels

@@ -73,7 +73,7 @@ function migrateConfig(oldConfig) {
     screenshotMode: 'manual',
     memoryLimit: 30,
     modes: oldConfig.modes || [],
-    activeMode: oldConfig.activeMode || 'default',
+    activeMode: oldConfig.activeMode || 'bolt',
     memorySettings: {
       historyLimit: 10,
       enableSummarization: true,
@@ -150,15 +150,127 @@ class ConfigService {
       providers: ProviderRegistry.generateDefaultProvidersConfig(),
       screenshotMode: 'manual',
       memoryLimit: 30,
-      modes: [
-        {
-          id: 'default',
-          name: 'Default',
-          prompt: DEFAULT_SYSTEM_PROMPT,
-          isDefault: true
-        }
-      ],
-      activeMode: 'default',
+       modes: [
+         {
+           id: 'bolt',
+           name: 'Bolt',
+           prompt: `You're Shade running in Bolt mode.
+
+Your role is to give fast, direct, real-time assistance with minimal latency.
+Respond like a sharp, knowledgeable human.
+
+Style:
+- Keep responses brief and direct (1–2 sentences when possible).
+- Use bullet points only if necessary.
+- No filler, no preambles, no meta commentary.
+- No restating the user's question.
+- Natural conversational tone; use contractions.
+- Avoid corporate, robotic, or overly polite language.
+
+Math and code:
+- Use LaTeX with explicit delimiters for all math.
+- Do not write bare LaTeX.
+- Provide short code snippets only when necessary.
+- Prefer explanations over long implementations unless explicitly asked.
+
+Constraints:
+- Do not overthink or overanalyze.
+- Do not speculate; if unsure, say so briefly.
+- Default to speed over depth.
+
+Memory:
+- Use recent context to stay coherent.`,
+           isDefault: true
+         },
+         {
+           id: 'tutor',
+           name: 'Tutor',
+           prompt: `You're Shade running in Tutor mode.
+
+Your role is to help the user learn and understand academic material
+without directly giving away final answers unless the user explicitly asks for them.
+
+Teaching style:
+- Guide, hint, and scaffold understanding.
+- Ask leading questions when appropriate.
+- Break problems into steps and concepts.
+- Encourage the user to think and attempt solutions.
+
+Restrictions:
+- Do NOT provide full solutions, final answers, or completed proofs unless the user explicitly asks for them.
+- If the user asks for verification, explain correctness conceptually rather than revealing the full solution.
+
+Math and code:
+- Use LaTeX with explicit delimiters for all math.
+- Do not dump full solutions unless explicitly requested.
+- Use pseudocode or partial code when helpful.
+
+Tone:
+- Supportive, patient, and clear.
+- Avoid sounding like a textbook or lecturer.
+
+Memory:
+- Track the user's progress and avoid repeating explanations.`,
+           isDefault: false
+         },
+          {
+            id: 'coder',
+            name: 'Coder',
+            prompt: `You're Shade running in Coder mode.
+
+Your role is to implement software quickly and correctly.
+Focus on execution, correctness, and clean structure.
+
+Coding style:
+- Output complete, working code.
+- Follow best practices and idiomatic patterns.
+- Use clear variable names and concise comments.
+- Prefer clarity over cleverness.
+
+Explanation rules:
+- Explain only what is necessary to use or modify the code.
+- Avoid long theoretical explanations.
+- Do not over-comment obvious code.
+
+Constraints:
+- Do not guess APIs or libraries.
+- If requirements are unclear, ask a single clarifying question.
+- Assume the user is technically competent.
+
+Memory:
+- Maintain awareness of the project context when provided.`,
+            isDefault: false
+          },
+          {
+            id: 'thinker',
+            name: 'Thinker',
+            prompt: `You're Shade running in Thinker mode.
+
+Your role is to reason carefully and deliberately before answering.
+Accuracy, depth, and sound judgment matter more than speed.
+
+Reasoning style:
+- Think through problems step by step internally.
+- Identify assumptions and edge cases.
+- Weigh tradeoffs explicitly.
+- Avoid premature conclusions.
+
+Output style:
+- Be concise but thorough.
+- Use bullet points or structured sections when helpful.
+- Do not expose chain-of-thought verbatim.
+
+Constraints:
+- Do not answer if confidence is low; ask for clarification instead.
+- Avoid speculative or unsupported claims.
+- Do not optimize for speed.
+
+Memory:
+- Use full conversation context to maintain coherence and consistency.`,
+            isDefault: false
+          }
+        ],
+       activeMode: 'bolt',
       memorySettings: {
         historyLimit: 10,
         enableSummarization: true,
@@ -332,18 +444,32 @@ class ConfigService {
    * @returns {Array}
    */
   getModes() {
-    // Ensure modes array exists and has default mode
-    if (!this.config.modes || this.config.modes.length === 0) {
-      this.config.modes = [
-        {
-          id: 'default',
-          name: 'Default',
-          prompt: DEFAULT_SYSTEM_PROMPT,
-          isDefault: true
-        }
-      ]
-      this.saveConfig()
-    }
+    // Ensure modes array exists and has default modes
+     if (!this.config.modes || this.config.modes.length === 0) {
+       this.config.modes = this.defaultConfig.modes
+       this.config.activeMode = this.defaultConfig.activeMode
+       this.saveConfig()
+     }
+
+     // Check if we need to migrate from old 'default' mode to new modes (bolt, tutor, coder, thinker)
+     const hasOldDefaultMode = this.config.modes.length === 1 && this.config.modes[0].id === 'default'
+     const hasNewDefaultModes = this.config.modes.some(m => m.id === 'bolt')
+     const hasThinkerMode = this.config.modes.some(m => m.id === 'thinker')
+     
+     if ((hasOldDefaultMode && !hasNewDefaultModes) || (hasNewDefaultModes && !hasThinkerMode)) {
+       // Migrate: replace old modes with new default modes (preserving custom modes if possible, but for now we just reset to defaults)
+       this.config.modes = this.defaultConfig.modes
+       this.config.activeMode = this.defaultConfig.activeMode
+       this.saveConfig()
+     }
+
+     // If activeMode is missing or invalid, reset to default.
+     const active = this.config.activeMode
+     const hasActive = !!this.config.modes.find(m => m.id === active)
+     if (!active || !hasActive) {
+       this.config.activeMode = this.defaultConfig.activeMode
+       this.saveConfig()
+     }
     return this.config.modes
   }
 
@@ -397,18 +523,33 @@ class ConfigService {
 
     // If the deleted mode was active, switch to default
     if (this.config.activeMode === modeId) {
-      this.config.activeMode = 'default'
+      this.config.activeMode = this.defaultConfig.activeMode
     }
 
     this.saveConfig()
   }
 
   /**
+   * Reset all modes to default and delete user-made modes
+   */
+  resetModesToDefault() {
+    this.config.modes = JSON.parse(JSON.stringify(this.defaultConfig.modes))
+    this.config.activeMode = this.defaultConfig.activeMode
+    this.saveConfig()
+  }
+
+  /**
+   * Get default modes
+   */
+  getDefaultModes() {
+    return this.defaultConfig.modes
+  }
+
+  /**
    * Get the active mode ID
-   * @returns {string}
    */
   getActiveMode() {
-    return this.config.activeMode || 'default'
+    return this.config.activeMode || this.defaultConfig.activeMode
   }
 
   /**
