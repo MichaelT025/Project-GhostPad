@@ -492,17 +492,23 @@ Memory:
     const existingIndex = modes.findIndex(m => m.id === mode.id)
 
     if (existingIndex >= 0) {
-      // Update existing mode (but preserve isDefault flag)
-      modes[existingIndex] = {
-        ...mode,
-        isDefault: modes[existingIndex].isDefault || false
-      }
+       // Update existing mode (but preserve isDefault flag)
+       modes[existingIndex] = {
+         ...mode,
+         isDefault: modes[existingIndex].isDefault || false
+       }
+
+       // Back-compat: default to "no override" unless explicitly set
+       if (modes[existingIndex].overrideProviderModel === undefined) {
+         modes[existingIndex].overrideProviderModel = false
+       }
     } else {
-      // Add new mode
-      modes.push({
-        ...mode,
-        isDefault: false
-      })
+       // Add new mode
+       modes.push({
+         overrideProviderModel: false,
+         ...mode,
+         isDefault: false
+       })
     }
 
     this.config.modes = modes

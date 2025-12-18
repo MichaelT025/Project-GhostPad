@@ -303,8 +303,16 @@ ipcMain.handle('send-message', async (event, { text, imageBase64, conversationHi
   try {
     console.log('Message send requested:', text, { hasSummary: !!summary })
 
-    // Get active provider and API key
-    const providerName = configService.getActiveProvider()
+    // Get active provider from Configuration (default)
+    let providerName = configService.getActiveProvider()
+
+    // Apply optional per-mode override without mutating Configuration
+    const activeModeId = configService.getActiveMode()
+    const activeMode = configService.getMode(activeModeId)
+    if (activeMode?.overrideProviderModel && activeMode?.provider) {
+      providerName = activeMode.provider
+    }
+
     const apiKey = configService.getApiKey(providerName)
 
     // Only require API key for non-local providers
@@ -319,10 +327,16 @@ ipcMain.handle('send-message', async (event, { text, imageBase64, conversationHi
     const config = configService.getProviderConfig(providerName)
     const activeSystemPrompt = configService.getActiveSystemPrompt()
 
-    // Merge system prompt from active mode into config
     const configWithPrompt = {
       ...config,
       systemPrompt: activeSystemPrompt
+    }
+
+    // Mode override: optionally override the model used for the request
+    if (activeMode?.overrideProviderModel && activeMode?.provider) {
+      if (activeMode.provider === providerName && activeMode.model) {
+        configWithPrompt.model = activeMode.model
+      }
     }
 
     // Create provider instance

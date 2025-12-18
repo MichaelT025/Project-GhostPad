@@ -496,16 +496,24 @@ async function loadSessions(query = '') {
 }
 
 function showView(viewId) {
-  document.querySelectorAll('.view-container').forEach(el => {
-    el.style.display = 'none'
-    el.classList.remove('active')
+  const views = document.querySelectorAll('.view-container')
+  let found = false
+  
+  views.forEach(el => {
+    if (el.id === viewId) {
+      if (el.classList.contains('active')) {
+        found = true
+        return
+      }
+      el.style.display = 'flex'
+      // Use timeout to ensure display: flex is applied before adding active class for animation
+      setTimeout(() => el.classList.add('active'), 10)
+      found = true
+    } else {
+      el.classList.remove('active')
+      el.style.display = 'none'
+    }
   })
-
-  const view = document.getElementById(viewId)
-  if (view) {
-    view.style.display = 'flex'
-    view.classList.add('active')
-  }
 }
 
 let configViewInitialized = false
@@ -799,8 +807,12 @@ function sanitizeMode(mode) {
     id: mode.id,
     name: (mode.name || '').trim() || 'New Mode',
     prompt: mode.prompt || '',
+
+    // Optional per-mode defaults (only applied when explicitly enabled).
+    overrideProviderModel: !!mode.overrideProviderModel,
     provider: mode.provider || '',
     model: mode.model || '',
+
     isDefault: !!mode.isDefault
   }
 }
@@ -819,10 +831,15 @@ function renderModesList(container, state) {
       const mode = sanitizeMode(m)
       const isActive = mode.id === activeModeId
       const isSelected = mode.id === selectedModeId
-      const subtitleParts = []
-      if (mode.provider) subtitleParts.push(mode.provider)
-      if (mode.model) subtitleParts.push(mode.model)
-      const subtitle = subtitleParts.length ? subtitleParts.join(' • ') : 'Current provider/model'
+       const subtitleParts = []
+       if (mode.overrideProviderModel) {
+         if (mode.provider) subtitleParts.push(mode.provider)
+         if (mode.model) subtitleParts.push(mode.model)
+       }
+       const subtitle = subtitleParts.length
+         ? subtitleParts.join(' • ')
+         : (mode.overrideProviderModel ? 'Select a provider/model' : 'Uses Configuration provider/model')
+
 
       return `
         <div class="mode-item ${isSelected ? 'active' : ''}" data-mode-id="${mode.id}">
@@ -880,6 +897,8 @@ async function renderModeEditor(container, state) {
 
   const { providers, activeProvider } = await fetchConfigurationState()
 
+  const overridesEnabled = !!sanitized.overrideProviderModel
+
   const providerOptions = (providers || [])
     .slice()
     .sort((a, b) => getProviderLabel(a).localeCompare(getProviderLabel(b)))
@@ -895,20 +914,37 @@ async function renderModeEditor(container, state) {
 
       <div class="form-row">
         <div class="form-field">
-          <label for="mode-provider">Provider</label>
-          <select id="mode-provider" class="select-input">${providerOptions}</select>
+          <label>Override Configuration provider/model</label>
+          <div class="inline-actions">
+            <label class="toggle-switch" aria-label="Override Configuration provider/model">
+              <input id="mode-override-provider-model" type="checkbox" ${overridesEnabled ? 'checked' : ''} />
+              <span class="toggle-slider"></span>
+            </label>
+            <div class="helper-text" style="margin-top: 0;">
+              When off, this mode only changes the system prompt.
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="form-row" style="margin-top: var(--space-12);">
-        <div class="form-field">
-          <label for="mode-model-search">Search models</label>
-          <div class="helper-text" style="margin-bottom: var(--space-8);">Click a model below to select it.</div>
-          <input id="mode-model-search" class="text-input" type="text" placeholder="Search by name" autocomplete="off" />
+      <div id="mode-provider-model-panel" class="mode-provider-model-panel ${overridesEnabled ? '' : 'is-collapsed'}">
+        <div class="form-row">
+          <div class="form-field">
+            <label for="mode-provider">Provider</label>
+            <select id="mode-provider" class="select-input">${providerOptions}</select>
+          </div>
         </div>
-      </div>
 
-      <div id="mode-model-list" class="model-list" style="max-height: 240px; margin-top: var(--space-8);" aria-label="Mode models"></div>
+        <div class="form-row" style="margin-top: var(--space-12);">
+          <div class="form-field">
+            <label for="mode-model-search">Search models</label>
+            <div class="helper-text" style="margin-bottom: var(--space-8);">Click a model below to select it.</div>
+            <input id="mode-model-search" class="text-input" type="text" placeholder="Search by name" autocomplete="off" />
+          </div>
+        </div>
+
+        <div id="mode-model-list" class="model-list" style="max-height: 240px; margin-top: var(--space-8);" aria-label="Mode models"></div>
+      </div>
     </div>
 
     <div class="config-card">
@@ -928,10 +964,55 @@ async function renderModeEditor(container, state) {
     </div>
   `
 
+  const panel = container.querySelector('#mode-provider-model-panel')
+  const overrideToggle = container.querySelector('#mode-override-provider-model')
   const providerSelect = container.querySelector('#mode-provider')
-  if (providerSelect) providerSelect.value = providerId
+  const modelSearch = container.querySelector('#mode-model-search')
 
-  await updateModeModelList(container, providerId, sanitized.model)
+  const setPanelEnabled = (enabled) => {
+    if (panel) panel.classList.toggle('is-collapsed', !enabled)
+
+    if (providerSelect) providerSelect.disabled = !enabled
+    if (modelSearch) modelSearch.disabled = !enabled
+
+    if (!enabled) {
+      const listEl = container.querySelector('#mode-model-list')
+      if (listEl) listEl.innerHTML = ''
+    }
+  }
+
+  if (providerSelect) providerSelect.value = providerId
+  setPanelEnabled(overridesEnabled)
+
+  let overrideToggleSeq = 0
+
+  if (overrideToggle) {
+    overrideToggle.addEventListener('change', async () => {
+      const seq = ++overrideToggleSeq
+      const enabled = !!overrideToggle.checked
+
+      // Update UI immediately so rapid toggles feel responsive.
+      setPanelEnabled(enabled)
+
+      const modeToSave = {
+        ...sanitized,
+        overrideProviderModel: enabled,
+        provider: providerSelect?.value || sanitized.provider || providerId,
+        model: sanitized.model
+      }
+      scheduleModeSave(modeToSave)
+
+      if (enabled) {
+        const providerForList = providerSelect?.value || providerId
+        await updateModeModelList(container, providerForList, modeToSave.model)
+        if (seq !== overrideToggleSeq) return
+      }
+    })
+  }
+
+  if (overridesEnabled) {
+    await updateModeModelList(container, providerId, sanitized.model)
+  }
 }
 
 async function updateModeModelList(editorEl, providerId, selectedModelId) {
@@ -999,25 +1080,6 @@ function scheduleModeSave(mode) {
   }, 250)
 }
 
-async function applyModeDefaultsIfActive(modeId) {
-  const { modes, activeModeId } = await fetchModesState(true)
-  if (modeId !== activeModeId) return
-
-  const mode = modes.find(m => m.id === modeId)
-  if (!mode) return
-
-  if (mode.provider) {
-    await window.electronAPI.setActiveProvider(mode.provider)
-    cachedActiveProvider = mode.provider
-
-    if (mode.model) {
-      const cfg = await window.electronAPI.getProviderConfig(mode.provider)
-      if (cfg?.success) {
-        await window.electronAPI.setProviderConfig(mode.provider, { ...cfg.config, model: mode.model })
-      }
-    }
-  }
-}
 
 async function initModesView() {
   const listEl = document.getElementById('modes-list')
@@ -1163,11 +1225,10 @@ async function initModesView() {
       
       // Select and Activate simultaneously
       selectedModeId = modeId
-      await window.electronAPI.setActiveMode(modeId)
-      cachedActiveModeId = modeId
-      cachedModes = null
-      await applyModeDefaultsIfActive(modeId)
-      await rerender()
+       await window.electronAPI.setActiveMode(modeId)
+       cachedActiveModeId = modeId
+       cachedModes = null
+       await rerender()
     }
   })
 
@@ -1192,6 +1253,8 @@ async function initModesView() {
     const mode = sanitizeMode(s.modes.find(m => m.id === selectedModeId) || {})
     if (!mode.id) return
 
+    // mode-override-provider-model is handled directly in renderModeEditor
+    // so the UI stays responsive and doesn't re-render with stale config.
     if (e.target.id === 'mode-provider') {
       mode.provider = e.target.value
       mode.model = ''
@@ -1217,9 +1280,6 @@ async function initModesView() {
       mode.model = modelId
       scheduleModeSave(mode)
       await updateModeModelList(editorEl, providerId, modelId)
-      if (mode.id === (await fetchModesState(true)).activeModeId) {
-        await applyModeDefaultsIfActive(mode.id)
-      }
     }
   })
 

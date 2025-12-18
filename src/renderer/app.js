@@ -15,6 +15,7 @@ let capturedScreenshot = null // Current screenshot base64
 let capturedThumbnail = null // Screenshot thumbnail for preview
 let isScreenshotActive = false // Screenshot button state
 let currentStreamingMessageId = null // ID of currently streaming message
+let currentLoadingId = null // ID of current loading indicator
 let accumulatedText = '' // Accumulated text during streaming
 let isCollapsed = true // Overlay collapse state (starts collapsed)
 
@@ -590,7 +591,6 @@ async function handleScreenshotCapture() {
       messageInput.placeholder = 'Ask about the captured screen...'
       
       console.log('Screenshot captured and attached')
-      showToast('Screenshot captured', 'success', 1500)
     } else {
       console.error('Screenshot capture failed:', result.error)
       showToast('Failed to capture screenshot: ' + result.error, 'error')
@@ -707,7 +707,7 @@ async function handleSendMessage() {
     messageInput.value = ''
 
     // Add loading indicator
-    const loadingId = addLoadingMessage()
+    currentLoadingId = addLoadingMessage()
     inputContainer.classList.add('generating')
     if (modeDropdownInput.value === 'thinker') {
       inputContainer.classList.add('thinking')
@@ -765,8 +765,11 @@ async function handleSendMessage() {
       context.summary
     )
 
-    // Remove loading indicator
-    removeLoadingMessage(loadingId)
+    // Remove loading indicator if it hasn't been removed by first chunk
+    if (currentLoadingId) {
+      removeLoadingMessage(currentLoadingId)
+      currentLoadingId = null
+    }
 
     if (!result.success) {
       // Show error message if initial request failed
@@ -805,6 +808,12 @@ async function handleSendMessage() {
  * @param {string} chunk - Text chunk from LLM
  */
 function handleMessageChunk(chunk) {
+  // Remove loading indicator on first chunk
+  if (currentLoadingId) {
+    removeLoadingMessage(currentLoadingId)
+    currentLoadingId = null
+  }
+
   // Accumulate text
   accumulatedText += chunk
 
@@ -824,6 +833,11 @@ function handleMessageComplete() {
   console.log('Streaming complete')
   inputContainer.classList.remove('generating')
   inputContainer.classList.remove('thinking')
+  
+  if (currentStreamingMessageId) {
+    finalizeStreamingMessage(currentStreamingMessageId, accumulatedText)
+  }
+  
   currentStreamingMessageId = null
   accumulatedText = ''
 }
@@ -1035,6 +1049,11 @@ function finalizeStreamingMessage(messageId, text) {
 
     // Store in message history
     messages.push({ id: generateMessageId(), type: 'ai', text, hasScreenshot: false, timestamp: new Date() })
+
+    // Add to memory manager
+    if (memoryManager) {
+      memoryManager.addMessage('assistant', text)
+    }
 
     // Persist session after assistant message completes
     scheduleSessionSave()

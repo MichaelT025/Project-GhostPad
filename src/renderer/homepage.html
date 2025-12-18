@@ -282,6 +282,7 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
+      min-height: 0;
       overflow: hidden;
       padding: calc(var(--space-20) + 56px) var(--space-20) var(--space-20);
       gap: var(--space-16);
@@ -706,9 +707,12 @@
     /* View Containers */
     .view-container {
       display: none;
+      flex: 1;
+      min-height: 0;
       flex-direction: column;
       gap: var(--space-20);
       animation: view-in 0.35s var(--easing);
+      overflow: hidden;
     }
 
     @keyframes view-in {
@@ -724,6 +728,77 @@
 
     .view-container.active {
       display: flex;
+    }
+
+    /* Shortcuts view */
+    .shortcuts-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .shortcuts-list::-webkit-scrollbar { width: 8px; }
+    .shortcuts-list::-webkit-scrollbar-track { background: transparent; }
+    .shortcuts-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-sm); }
+
+    .shortcut-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-16);
+      padding: var(--space-20) var(--space-16);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      transition: all var(--duration-quick) var(--easing);
+      margin-bottom: var(--space-8);
+    }
+
+    .shortcut-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.12);
+      transform: translateX(4px);
+    }
+
+    .shortcut-label {
+      color: var(--text-secondary);
+      font-size: var(--font-size-base);
+      font-weight: 500;
+    }
+
+    .shortcut-item:hover .shortcut-label {
+      color: var(--text-primary);
+    }
+
+    .shortcut-keys {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .key-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--text-primary);
+      font-family: var(--font-family-mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 0 rgba(255, 255, 255, 0.05);
+      white-space: nowrap;
+      text-transform: uppercase;
     }
 
     .config-card {
@@ -1015,6 +1090,26 @@
       box-shadow: var(--focus-ring);
     }
 
+    /* Modes: provider/model override panel */
+    .mode-provider-model-panel {
+      margin-top: var(--space-12);
+      overflow: hidden;
+      opacity: 1;
+      transform: translateY(0);
+      max-height: 600px;
+      transition:
+        max-height 180ms var(--easing),
+        opacity 180ms var(--easing),
+        transform 180ms var(--easing);
+    }
+
+    .mode-provider-model-panel.is-collapsed {
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-4px);
+      pointer-events: none;
+    }
+
     .mini-btn {
       height: 34px;
       padding: 0 var(--space-12);
@@ -1135,7 +1230,7 @@
       </div>
 
       <!-- Sessions View -->
-      <div id="view-sessions" class="view-container">
+      <div id="view-sessions" class="view-container active" style="display: flex;">
         <div class="header" style="padding-top: 6px;">
           <div>
             <h1>All conversations</h1>
@@ -1163,7 +1258,7 @@
       </div>
 
       <!-- Modes View -->
-      <div id="view-modes" class="view-container" style="display: none;">
+      <div id="view-modes" class="view-container">
         <div class="header" style="padding-top: 6px;">
           <div>
             <h1>Modes</h1>
@@ -1199,7 +1294,7 @@
       </div>
 
       <!-- Configuration View -->
-      <div id="view-configuration" class="view-container" style="display: none;">
+      <div id="view-configuration" class="view-container">
         <div class="header" style="padding-top: 6px;">
           <div>
             <h1>Configuration</h1>
@@ -1211,7 +1306,7 @@
       </div>
 
       <!-- Shortcuts View -->
-      <div id="view-shortcuts" class="view-container" style="display: none;">
+      <div id="view-shortcuts" class="view-container">
         <div class="header" style="padding-top: 6px;">
           <div>
             <h1>Keyboard Shortcuts</h1>
