@@ -48,31 +48,37 @@
 
     .brand {
       display: flex;
-      flex-direction: column;
-      gap: var(--space-4);
+      align-items: center;
+      gap: var(--space-12);
     }
 
-    .brand-title {
+    .app-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--focus-ring);
+      flex-shrink: 0;
+    }
+
+    .brand-text {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-8);
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.1;
+    }
+
+    .brand-name {
+      font-size: var(--font-size-lg);
       font-weight: 700;
       letter-spacing: 0.2px;
+      color: var(--text-primary);
     }
 
-    .brand-title span {
-      font-size: var(--font-size-lg);
-    }
-
-    .version-pill {
+    .version-text {
+      margin-top: var(--space-2);
       font-size: var(--font-size-xs);
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text-secondary);
-      font-weight: 600;
+      color: var(--text-tertiary);
     }
 
     .nav {
@@ -243,6 +249,12 @@
     .footer-btn .nav-icon {
       width: 16px;
       height: 16px;
+    }
+
+    #check-update:focus,
+    #check-update:focus-visible {
+      outline: none;
+      box-shadow: none;
     }
 
     .main {
@@ -948,9 +960,10 @@
     <aside class="sidebar">
       <div>
         <div class="brand">
-          <div class="brand-title">
-            <span>Shade</span>
-            <span class="version-pill">v1</span>
+          <img src="assets/icons/main_icon/appicon.png" alt="Shade Logo" class="app-logo" />
+          <div class="brand-text">
+            <div class="brand-name">Shade</div>
+            <div class="version-text">v0.1.0</div>
           </div>
         </div>
 
