@@ -36,6 +36,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('resume-session', (_event, sessionId) => callback(sessionId))
   },
 
+  // Listen for session deletion (from dashboard)
+  onSessionDeleted: (callback) => {
+    ipcRenderer.on('session-deleted', (_event, sessionId) => callback(sessionId))
+  },
+
   // Listen for config changes (from settings window)
   onConfigChanged: (callback) => {
     ipcRenderer.on('config-changed', () => callback())
@@ -111,7 +116,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openModelSwitcher: () => ipcRenderer.invoke('open-model-switcher'),
   closeModelSwitcher: () => ipcRenderer.invoke('close-model-switcher'),
   hideWindow: () => ipcRenderer.invoke('hide-window'),
+  deleteAllData: () => ipcRenderer.invoke('delete-all-data'),
   setCollapsed: (collapsed, height) => ipcRenderer.send('set-collapsed', { collapsed, height }),
+  adjustOverlayHeight: (extraHeight) => ipcRenderer.invoke('adjust-overlay-height', extraHeight),
   focusOverlay: () => ipcRenderer.invoke('focus-overlay'),
   resumeSessionInOverlay: (sessionId) => ipcRenderer.invoke('resume-session-in-overlay', sessionId),
   startNewChatInOverlay: () => ipcRenderer.invoke('start-new-chat-in-overlay'),

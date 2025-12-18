@@ -641,29 +641,55 @@ async function deleteMode() {
   const modeId = currentSettings.selectedMode
   if (modeId === 'default') return
 
-  if (!confirm('Are you sure you want to delete this mode?')) return
+  const modal = document.getElementById('delete-mode-modal')
+  const confirmBtn = document.getElementById('confirm-delete-mode-btn')
+  const iconSpan = document.getElementById('modal-trash-icon')
+  
+  if (iconSpan) insertIcon(iconSpan, 'trash')
+  
+  modal?.classList.add('open')
 
-  try {
-    await window.electronAPI.deleteMode(modeId)
-    currentSettings.modes = currentSettings.modes.filter(m => m.id !== modeId)
-    const modeSelect = document.getElementById('mode-select')
-    if (modeSelect) {
-      modeSelect.querySelector(`option[value="${modeId}"]`)?.remove()
-      modeSelect.value = 'default'
+  // Remove existing listener if any
+  const newConfirmBtn = confirmBtn.cloneNode(true)
+  confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn)
+
+  newConfirmBtn.addEventListener('click', async () => {
+    try {
+      newConfirmBtn.disabled = true
+      newConfirmBtn.textContent = 'Deleting...'
+      
+      await window.electronAPI.deleteMode(modeId)
+      currentSettings.modes = currentSettings.modes.filter(m => m.id !== modeId)
+      const modeSelect = document.getElementById('mode-select')
+      if (modeSelect) {
+        modeSelect.querySelector(`option[value="${modeId}"]`)?.remove()
+        modeSelect.value = 'default'
+      }
+      currentSettings.selectedMode = 'default'
+      updateModeUI()
+      showStatus('mode-save-status', 'Mode deleted successfully', 'success')
+      
+      closeDeleteModeModal()
+      
+      setTimeout(() => {
+        const el = document.getElementById('mode-save-status')
+        if (el) el.style.display = 'none'
+      }, 2000)
+    } catch (error) {
+      console.error('Failed to delete mode:', error)
+      showStatus('mode-save-status', 'Failed to delete mode: ' + error.message, 'error')
+      newConfirmBtn.disabled = false
+      newConfirmBtn.textContent = 'Delete Mode'
     }
-    currentSettings.selectedMode = 'default'
-    updateModeUI()
-    showStatus('mode-save-status', 'Mode deleted successfully', 'success')
-    setTimeout(() => {
-      const el = document.getElementById('mode-save-status')
-      if (el) el.style.display = 'none'
-    }, 2000)
-  } catch (error) {
-    console.error('Failed to delete mode:', error)
-    showStatus('mode-save-status', 'Failed to delete mode: ' + error.message, 'error')
-  }
+  })
 }
 
+function closeDeleteModeModal() {
+  const modal = document.getElementById('delete-mode-modal')
+  modal?.classList.remove('open')
+}
+
+window.closeDeleteModeModal = closeDeleteModeModal
 window.deleteMode = deleteMode
 
 /**

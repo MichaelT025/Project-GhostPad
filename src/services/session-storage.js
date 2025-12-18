@@ -30,15 +30,31 @@ function safeText(value) {
   return value
 }
 
+function safePathPart(value) {
+  const raw = safeText(value)
+  const cleaned = raw.replace(/[^a-zA-Z0-9_-]/g, '')
+  return cleaned
+}
+
 function normalizeSessionMessage(message) {
   const timestamp = normalizeIsoTimestamp(message?.timestamp)
   const type = message?.type === 'ai' ? 'ai' : 'user'
+  const hasScreenshot = !!message?.hasScreenshot
+
+  const screenshotPathRaw = hasScreenshot && type === 'user'
+    ? safeText(message?.screenshotPath)
+    : ''
+
+  const screenshotPath = screenshotPathRaw && !screenshotPathRaw.includes('..') && !path.isAbsolute(screenshotPathRaw)
+    ? screenshotPathRaw
+    : ''
 
   return {
     id: safeText(message?.id) || generateId(),
     type,
     text: safeText(message?.text),
-    hasScreenshot: !!message?.hasScreenshot,
+    hasScreenshot,
+    screenshotPath: screenshotPath || undefined,
     timestamp
   }
 }
@@ -50,6 +66,7 @@ class SessionStorage {
     }
 
     this.sessionsDir = path.join(userDataPath, 'sessions')
+    this.sessionAssetsRoot = path.join(this.sessionsDir, '_assets')
   }
 
   sessionPathForId(id) {
@@ -64,6 +81,54 @@ class SessionStorage {
     }
 
     return path.join(this.sessionsDir, `${safeId}.json`)
+  }
+
+  sessionAssetsDirForId(id) {
+    if (!id || typeof id !== 'string') {
+      throw new Error('Session id is required')
+    }
+
+    const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '')
+    if (!safeId) {
+      throw new Error('Invalid session id')
+    }
+
+    return path.join(this.sessionAssetsRoot, safeId)
+  }
+
+  screenshotDirForSession(id) {
+    return path.join(this.sessionAssetsDirForId(id), 'screenshots')
+  }
+
+  async writeScreenshot(sessionId, messageId, base64) {
+    const dir = this.screenshotDirForSession(sessionId)
+    await fs.mkdir(dir, { recursive: true })
+
+    const filePart = safePathPart(messageId) || generateId()
+    const filename = `${filePart}.jpg`
+
+    const filePath = path.join(dir, filename)
+    const buffer = Buffer.from(base64, 'base64')
+
+    await fs.writeFile(filePath, buffer)
+
+    // Store path relative to the session assets root.
+    return path.join('screenshots', filename)
+  }
+
+  async readScreenshotBase64(sessionId, screenshotPath) {
+    const rel = safeText(screenshotPath)
+    if (!rel) return ''
+    if (rel.includes('..') || path.isAbsolute(rel)) return ''
+
+    const fullPath = path.join(this.sessionAssetsDirForId(sessionId), rel)
+
+    try {
+      const data = await fs.readFile(fullPath)
+      return data.toString('base64')
+    } catch {
+      return ''
+    }
   }
 
   async ensureSessionsDir() {
@@ -95,9 +160,24 @@ class SessionStorage {
     const createdAt = normalizeIsoTimestamp(session?.createdAt)
     const updatedAt = new Date().toISOString()
 
-    const messages = Array.isArray(session?.messages)
-      ? session.messages.map(normalizeSessionMessage)
+    const rawMessages = Array.isArray(session?.messages)
+      ? session.messages
       : []
+
+    const messages = []
+
+    for (const raw of rawMessages) {
+      const normalized = normalizeSessionMessage(raw)
+
+      if (normalized.type === 'user' && normalized.hasScreenshot) {
+        const screenshotBase64 = safeText(raw?.screenshotBase64)
+        if (screenshotBase64) {
+          normalized.screenshotPath = await this.writeScreenshot(id, normalized.id, screenshotBase64)
+        }
+      }
+
+      messages.push(normalized)
+    }
 
     const title = safeText(session?.title).trim() || this.generateTitle(messages)
 
@@ -199,6 +279,14 @@ class SessionStorage {
 
     const filePath = this.sessionPathForId(id)
     await fs.rm(filePath, { force: true })
+
+    try {
+      const assetsDir = this.sessionAssetsDirForId(id)
+      await fs.rm(assetsDir, { recursive: true, force: true })
+    } catch {
+      // ignore
+    }
+
     return true
   }
 

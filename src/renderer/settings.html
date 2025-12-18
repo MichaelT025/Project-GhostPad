@@ -486,6 +486,50 @@
     <div id="save-status" class="status-message"></div>
   </div>
 
+  <div id="delete-mode-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Delete mode">
+    <div class="modal">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,107,107,0.1); display: flex; align-items: center; justify-content: center; color: var(--danger);">
+          <span id="modal-trash-icon"></span>
+        </div>
+        <h2 style="font-size: 18px; font-weight: 600; margin: 0;">Delete Mode?</h2>
+      </div>
+      <p style="font-size: 14px; color: rgba(255, 255, 255, 0.7); margin-bottom: 20px;">Are you sure you want to delete this mode? This action cannot be undone.</p>
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button class="btn-secondary" onclick="closeDeleteModeModal()">Cancel</button>
+        <button id="confirm-delete-mode-btn" class="btn-primary" style="background: var(--danger); color: white; flex: none; padding: 10px 20px;">Delete Mode</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+    .modal {
+      background: #1e2128;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+  </style>
+
   <script type="module" src="settings.js"></script>
 </body>
 </html>

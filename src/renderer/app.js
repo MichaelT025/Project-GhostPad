@@ -52,6 +52,10 @@ function generateMessageId() {
   return `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+function safePathPart(value) {
+  return (value || '').toString().replace(/[^a-zA-Z0-9_-]/g, '')
+}
+
 function toIsoTimestamp(value) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString()
@@ -110,6 +114,8 @@ async function saveCurrentSession() {
       type: m.type,
       text: m.text,
       hasScreenshot: !!m.hasScreenshot,
+      ...(typeof m.screenshotPath === 'string' && m.screenshotPath ? { screenshotPath: m.screenshotPath } : {}),
+      ...(typeof m.screenshotBase64 === 'string' && m.screenshotBase64 ? { screenshotBase64: m.screenshotBase64 } : {}),
       timestamp: toIsoTimestamp(m.timestamp)
     }))
   }
@@ -117,6 +123,15 @@ async function saveCurrentSession() {
   const result = await window.electronAPI.saveSession(sessionPayload)
   if (result?.success && result.session?.id) {
     currentSessionId = result.session.id
+  }
+
+  // Once a screenshot message is persisted, keep only the on-disk reference.
+  if (result?.success) {
+    for (const m of messages) {
+      if (m && typeof m.screenshotBase64 === 'string' && m.screenshotBase64 && typeof m.screenshotPath === 'string' && m.screenshotPath) {
+        delete m.screenshotBase64
+      }
+    }
   }
 }
 
@@ -135,6 +150,9 @@ async function loadSessionIntoChat(sessionId) {
     showToast('Session data was invalid', 'error', 2500)
     return
   }
+
+  // Clear any previously attached screenshot to prevent leakage between sessions.
+  removeScreenshot()
 
   // Reset UI container
   messagesContainer.innerHTML = '<div class="chat-wrapper" id="chat-wrapper"></div>'
@@ -181,12 +199,29 @@ async function loadSessionIntoChat(sessionId) {
       type,
       text,
       hasScreenshot,
+      ...(typeof m.screenshotPath === 'string' && m.screenshotPath ? { screenshotPath: m.screenshotPath } : {}),
       timestamp
     })
 
     if (memoryManager) {
       const role = type === 'user' ? 'user' : 'assistant'
       memoryManager.addMessage(role, text)
+    }
+  }
+
+  // Restore the last screenshot for this session (only if we keep screenshots in memory).
+  if (screenshotMode === 'manual' && !excludeScreenshotsFromMemory) {
+    const lastScreenshotBase64 = typeof session.lastScreenshotBase64 === 'string'
+      ? session.lastScreenshotBase64
+      : ''
+
+    if (lastScreenshotBase64) {
+      capturedScreenshot = lastScreenshotBase64
+      capturedThumbnail = lastScreenshotBase64
+      isScreenshotActive = true
+      screenshotBtn.classList.add('active')
+      screenshotBtn.title = 'Remove screenshot'
+      messageInput.placeholder = 'Ask about the captured screen...'
     }
   }
 
@@ -300,10 +335,15 @@ async function init() {
 
   await loadBehaviorSettings()
 
-  // Screenshot button - capture immediately and highlight icon
+  // Screenshot button - toggle screenshot attachment in manual mode
   screenshotBtn.addEventListener('click', async () => {
     if (screenshotMode === 'auto') {
       showToast('Auto screenshot mode is enabled', 'info', 2000)
+      return
+    }
+
+    if (isScreenshotActive) {
+      removeScreenshot()
       return
     }
 
@@ -373,6 +413,13 @@ async function init() {
   // Ctrl+R new chat handler
   window.electronAPI.onNewChat(handleNewChat)
 
+  // If the current session is deleted from the dashboard, reset the overlay.
+  window.electronAPI.onSessionDeleted?.((sessionId) => {
+    if (!sessionId || currentSessionId === sessionId) {
+      handleNewChat()
+    }
+  })
+ 
   // Config changed handler (from settings window)
   window.electronAPI.onConfigChanged(async () => {
     console.log('Config changed, refreshing modes...')
@@ -408,6 +455,7 @@ async function init() {
 
   // Initialize custom icons from directory
   await initIcons()
+
 
     // Insert icons into UI elements
     insertIcon(closeBtn, 'close', 'icon-svg')
@@ -584,6 +632,7 @@ async function handleScreenshotCapture() {
       capturedThumbnail = result.thumbnail || result.base64 // Use thumbnail if available
       screenshotBtn.classList.add('active')
       isScreenshotActive = true
+      screenshotBtn.title = 'Remove screenshot'
       
       // Show screenshot chip preview
       // showScreenshotChip(capturedThumbnail)
@@ -642,6 +691,7 @@ function removeScreenshot() {
   
   // Reset button state
   screenshotBtn.classList.remove('active')
+  screenshotBtn.title = 'Capture Screenshot'
   
   // Reset placeholder
   messageInput.placeholder = 'Ask about your screen or conversation, or ↩ for Assist'
@@ -712,7 +762,7 @@ async function handleSendMessage() {
   try {
     // Add user message to UI (if text exists, otherwise use 'Assist' as default)
     const messageText = text || 'Assist'
-    addMessage('user', messageText, sendHasScreenshot)
+    addMessage('user', messageText, sendHasScreenshot, sendScreenshot)
 
     // Clear input immediately for better UX
     messageInput.value = ''
@@ -797,9 +847,12 @@ async function handleSendMessage() {
     showError('Error: ' + error.message)
     resetSendButton()
   } finally {
-    // Clear screenshot after sending
+    // In manual mode, keep screenshots sticky across messages.
+    // Users can toggle it off via the screenshot button.
     if (screenshotMode === 'manual') {
-      removeScreenshot()
+      if (!sendHasScreenshot) {
+        removeScreenshot()
+      }
     } else {
       // Keep icon "toggled on" in auto mode
       capturedScreenshot = null
@@ -886,7 +939,7 @@ function handleMessageError(error) {
  * @param {string} text - Message content
  * @param {boolean} hasScreenshot - Whether the message includes a screenshot
  */
-function addMessage(type, text, hasScreenshot = false) {
+function addMessage(type, text, hasScreenshot = false, screenshotBase64 = null) {
   // Remove empty state if it exists
   const emptyState = messagesContainer.querySelector('.empty-state')
   if (emptyState) {
@@ -913,8 +966,26 @@ function addMessage(type, text, hasScreenshot = false) {
   scrollToBottom()
 
   // Store in message history (for UI/session persistence)
+  const id = generateMessageId()
+
   const persistHasScreenshot = hasScreenshot && !(excludeScreenshotsFromMemory && type === 'user')
-  messages.push({ id: generateMessageId(), type, text, hasScreenshot: persistHasScreenshot, timestamp: new Date() })
+  const persistScreenshotBase64 = persistHasScreenshot && type === 'user' && typeof screenshotBase64 === 'string'
+    ? screenshotBase64
+    : null
+
+  const persistScreenshotPath = persistHasScreenshot && type === 'user'
+    ? `screenshots/${safePathPart(id) || id}.jpg`
+    : undefined
+
+  messages.push({
+    id,
+    type,
+    text,
+    hasScreenshot: persistHasScreenshot,
+    screenshotPath: persistScreenshotPath,
+    screenshotBase64: persistScreenshotBase64 || undefined,
+    timestamp: new Date()
+  })
 
   // Persist session after each message
   scheduleSessionSave()
@@ -1355,20 +1426,7 @@ function handleNewChat() {
   chatWrapper = document.getElementById('chat-wrapper')
 
   // Reset screenshot state
-  capturedScreenshot = null
-  if (screenshotMode === 'auto') {
-    screenshotBtn.classList.add('active')
-    screenshotBtn.classList.add('show-label')
-    isScreenshotActive = true
-    const label = document.getElementById('screenshot-label')
-    if (label) label.textContent = 'Using screen'
-  } else {
-    screenshotBtn.classList.remove('active')
-    screenshotBtn.classList.remove('show-label')
-    isScreenshotActive = false
-    const label = document.getElementById('screenshot-label')
-    if (label) label.textContent = ''
-  }
+  removeScreenshot()
 
   // Clear input
   messageInput.value = ''

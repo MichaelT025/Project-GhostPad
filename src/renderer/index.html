@@ -36,9 +36,9 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: var(--font-family);
       background: transparent;
-      color: white;
+      color: var(--text-primary);
       overflow: hidden;
     }
 
@@ -570,7 +570,7 @@
     .mode-select-input {
       flex-shrink: 0;
       padding: var(--space-4) var(--space-12);
-      background: rgba(0, 0, 0, 0.18);
+      background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.10);
       border-radius: var(--radius-sm);
       color: var(--text-secondary);
@@ -579,6 +579,8 @@
       cursor: pointer;
       transition: all var(--duration-quick) var(--easing);
       outline: none;
+      height: 32px;
+      min-width: 110px;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       appearance: none;
@@ -590,11 +592,13 @@
     }
 
     .mode-select-input:hover {
-      background: rgba(0, 0, 0, 0.28);
-      border-color: rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
     }
 
-    .mode-select-input:focus {
+    .mode-select-input:focus-visible {
+      border-color: var(--accent);
       box-shadow: var(--focus-ring);
     }
 

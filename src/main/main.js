@@ -248,6 +248,14 @@ function createModelSwitcherWindow() {
 
 // Register global hotkeys
 function registerHotkeys() {
+  const isOverlayVisible = () => {
+    if (!mainWindow) return false
+    // Treat minimized/hidden as "overlay hidden" for shortcut gating.
+    if (mainWindow.isMinimized()) return false
+    if (typeof mainWindow.isVisible === 'function' && !mainWindow.isVisible()) return false
+    return true
+  }
+
   // Ctrl+/ to toggle window visibility (minimize to taskbar)
   globalShortcut.register('CommandOrControl+/', () => {
     if (mainWindow) {
@@ -262,27 +270,25 @@ function registerHotkeys() {
 
   // Ctrl+R to start new chat
   globalShortcut.register('CommandOrControl+R', () => {
-    if (mainWindow) {
-      mainWindow.webContents.send('new-chat')
-    }
+    if (!isOverlayVisible()) return
+    mainWindow.webContents.send('new-chat')
   })
 
   // Ctrl+' to toggle overlay collapse
   globalShortcut.register('CommandOrControl+\'', () => {
-    if (mainWindow) {
-      mainWindow.webContents.send('toggle-collapse')
-    }
+    if (!isOverlayVisible()) return
+    mainWindow.webContents.send('toggle-collapse')
   })
 
   // Ctrl+Shift+S to capture screenshot
   globalShortcut.register('CommandOrControl+Shift+S', () => {
-    if (mainWindow) {
-      mainWindow.webContents.send('capture-screenshot')
-    }
+    if (!isOverlayVisible()) return
+    mainWindow.webContents.send('capture-screenshot')
   })
 
   // Ctrl+M to open model switcher
   globalShortcut.register('CommandOrControl+M', () => {
+    if (!isOverlayVisible()) return
     createModelSwitcherWindow()
   })
 }
@@ -1073,6 +1079,35 @@ ipcMain.on('set-collapsed', (_event, payload) => {
   }
 })
 
+let overlayTempBounds = null
+ipcMain.handle('adjust-overlay-height', async (_event, extraHeight) => {
+  if (!mainWindow) return { success: false, error: 'Overlay not available' }
+  if (overlayIsCollapsed) return { success: false, error: 'Overlay is collapsed' }
+
+  const extra = Number(extraHeight)
+  if (!Number.isFinite(extra)) return { success: false, error: 'Invalid height' }
+
+  // Store current bounds the first time we expand
+  if (!overlayTempBounds) overlayTempBounds = mainWindow.getBounds()
+
+  if (extra <= 0) {
+    // Restore original bounds
+    mainWindow.setBounds(overlayTempBounds)
+    overlayTempBounds = null
+    return { success: true }
+  }
+
+  const base = overlayTempBounds
+  mainWindow.setBounds({
+    x: base.x,
+    y: base.y,
+    width: base.width,
+    height: base.height + Math.ceil(extra)
+  })
+
+  return { success: true }
+})
+
 // Memory settings IPC handlers
 ipcMain.handle('get-memory-settings', async () => {
   try {
@@ -1343,6 +1378,23 @@ ipcMain.handle('load-session', async (_event, id) => {
     }
 
     const session = await sessionStorage.loadSession(id)
+
+    // Provide the most recent screenshot (if persisted) so the overlay can keep it sticky.
+    try {
+      const lastWithScreenshot = Array.isArray(session?.messages)
+        ? [...session.messages].reverse().find(m => m?.type === 'user' && m?.hasScreenshot && typeof m?.screenshotPath === 'string' && m.screenshotPath)
+        : null
+
+      if (lastWithScreenshot) {
+        const lastScreenshotBase64 = await sessionStorage.readScreenshotBase64(session.id || id, lastWithScreenshot.screenshotPath)
+        if (lastScreenshotBase64) {
+          session.lastScreenshotBase64 = lastScreenshotBase64
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load last screenshot:', e?.message || e)
+    }
+
     return { success: true, session }
   } catch (error) {
     console.error('Failed to load session:', error)
@@ -1371,9 +1423,39 @@ ipcMain.handle('delete-session', async (_event, id) => {
     }
 
     await sessionStorage.deleteSession(id)
+
+    // Ensure any in-memory state (e.g. sticky screenshots) is cleared in renderers.
+    sendToWindows('session-deleted', id)
+
     return { success: true }
   } catch (error) {
     console.error('Failed to delete session:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('delete-all-data', async () => {
+  try {
+    if (!sessionStorage) {
+      return { success: false, error: 'Session storage not initialized' }
+    }
+
+    // Delete all sessions (which also clears their screenshots).
+    const sessions = await sessionStorage.getAllSessions()
+    await Promise.all((sessions || []).map(async (s) => {
+      try {
+        await sessionStorage.deleteSession(s.id)
+      } catch (e) {
+        console.error('Failed to delete session during wipe:', s?.id, e)
+      }
+    }))
+
+    // Notify renderers to reset local state.
+    sendToWindows('session-deleted', null)
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to delete all data:', error)
     return { success: false, error: error.message }
   }
 })

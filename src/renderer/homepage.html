@@ -450,55 +450,58 @@
     .content {
       flex: 1;
       overflow-y: auto;
-      padding-right: 6px;
+      padding: var(--space-8) var(--space-12);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-sm);
+      background: rgba(0, 0, 0, 0.1);
     }
 
-    .content::-webkit-scrollbar { width: 8px; }
+    .content::-webkit-scrollbar { width: 4px; }
     .content::-webkit-scrollbar-track { background: transparent; }
-    .content::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-sm); }
+    .content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
 
     .date-header {
-      margin: var(--space-24) 0 var(--space-12);
+      margin: var(--space-16) 0 var(--space-8);
       color: var(--text-tertiary);
-      font-size: var(--font-size-xs);
-      font-weight: 600;
-      letter-spacing: 0.5px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
       text-transform: uppercase;
       padding-left: var(--space-4);
+      opacity: 0.8;
     }
 
     .session-card {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--space-16);
-      padding: var(--space-16);
-      border-radius: var(--radius-lg);
+      gap: var(--space-12);
+      padding: var(--space-8) var(--space-12);
+      border-radius: var(--radius-sm);
       border: 1px solid rgba(255, 255, 255, 0.06);
       background: rgba(255, 255, 255, 0.02);
       cursor: pointer;
       transition: all var(--duration-quick) var(--easing);
       position: relative;
-      margin-bottom: var(--space-8);
+      margin-bottom: var(--space-4);
     }
 
     .session-card:hover {
       background: rgba(255, 255, 255, 0.05);
       border-color: rgba(255, 255, 255, 0.12);
       transform: translateY(-1px);
-      box-shadow: var(--shadow-elev-1);
     }
 
     .session-left {
       display: flex;
       flex: 1;
       flex-direction: column;
-      gap: 6px;
+      gap: 2px;
       min-width: 0;
     }
 
     .session-title {
-      font-size: var(--font-size-base);
+      font-size: var(--font-size-sm);
       font-weight: 600;
       color: var(--text-primary);
       white-space: nowrap;
@@ -513,8 +516,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
       color: var(--warning);
       flex-shrink: 0;
     }
@@ -526,7 +529,7 @@
     }
 
     .session-subtitle {
-      font-size: var(--font-size-sm);
+      font-size: var(--font-size-xs);
       color: var(--text-tertiary);
       white-space: nowrap;
       overflow: hidden;
@@ -541,12 +544,29 @@
       align-items: center;
       gap: var(--space-8);
       flex-shrink: 0;
-      min-width: 100px; /* Ensure space */
+      min-width: 80px; /* Reduced */
       justify-content: flex-end;
     }
 
     .session-card:hover .timestamp {
       display: none; /* Make room for actions */
+    }
+
+    .timestamp {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      opacity: 0.8;
+      font-weight: 500;
+    }
+
+    .pill {
+      font-size: 10px;
+      padding: 1px 6px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-pill);
+      color: var(--text-tertiary);
+      font-weight: 500;
     }
 
     /* Rename modal */
@@ -875,9 +895,9 @@
     }
 
     .icon-mini {
-      width: 30px;
-      height: 30px;
-      border-radius: var(--radius-md);
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
       border: 1px solid transparent;
       background: transparent;
       color: var(--text-tertiary);
@@ -887,6 +907,11 @@
       align-items: center;
       justify-content: center;
       padding: 0;
+    }
+
+    .icon-mini svg, .icon-mini .nav-icon {
+      width: 14px;
+      height: 14px;
     }
 
     .icon-mini:hover {
@@ -911,7 +936,7 @@
       background: rgba(0, 0, 0, 0.18);
       color: var(--text-primary);
       outline: none;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-family-mono);
       font-size: 13px;
       line-height: 1.4;
     }
@@ -1212,6 +1237,13 @@
         </div>
 
         <div id="content" class="content" aria-label="Sessions"></div>
+
+        <div id="sessions-footer" style="margin-top: auto; padding-top: var(--space-16); border-top: 1px solid rgba(255, 255, 255, 0.06);">
+          <button id="sessions-delete-all" class="action-btn danger" type="button" style="width: 100%;">
+            <span class="nav-icon" data-icon="trash"></span>
+            Delete All Data
+          </button>
+        </div>
       </div>
 
       <!-- Modes View -->
@@ -1383,6 +1415,54 @@
       <div class="modal-actions">
         <button id="reset-prompt-cancel" class="mini-btn" type="button">Cancel</button>
         <button id="reset-prompt-confirm" class="mini-btn danger" type="button" style="background: var(--danger); color: white; border: none; font-weight: 600;">Reset Prompt</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-all-data-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Delete all data">
+    <div class="modal">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,107,107,0.1); display: flex; align-items: center; justify-content: center; color: var(--danger);">
+          <span class="nav-icon" data-icon="trash" style="width: 20px; height: 20px;"></span>
+        </div>
+        <h2 style="margin: 0;">Delete All Data?</h2>
+      </div>
+      <p>This will permanently delete ALL conversations and screenshots. This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button id="delete-all-data-cancel" class="mini-btn" type="button">Cancel</button>
+        <button id="delete-all-data-confirm" class="mini-btn danger" type="button" style="background: var(--danger); color: white; border: none; font-weight: 600;">Delete Everything</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-sessions-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Delete conversations">
+    <div class="modal">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,107,107,0.1); display: flex; align-items: center; justify-content: center; color: var(--danger);">
+          <span class="nav-icon" data-icon="trash" style="width: 20px; height: 20px;"></span>
+        </div>
+        <h2 id="delete-sessions-title" style="margin: 0;">Delete Conversations?</h2>
+      </div>
+      <p id="delete-sessions-msg">Are you sure you want to delete these conversations? This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button id="delete-sessions-cancel" class="mini-btn" type="button">Cancel</button>
+        <button id="delete-sessions-confirm" class="mini-btn danger" type="button" style="background: var(--danger); color: white; border: none; font-weight: 600;">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-mode-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Delete mode">
+    <div class="modal">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,107,107,0.1); display: flex; align-items: center; justify-content: center; color: var(--danger);">
+          <span class="nav-icon" data-icon="trash" style="width: 20px; height: 20px;"></span>
+        </div>
+        <h2 style="margin: 0;">Delete Mode?</h2>
+      </div>
+      <p>Are you sure you want to delete this mode? This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button id="delete-mode-cancel" class="mini-btn" type="button">Cancel</button>
+        <button id="delete-mode-confirm" class="mini-btn danger" type="button" style="background: var(--danger); color: white; border: none; font-weight: 600;">Delete Mode</button>
       </div>
     </div>
   </div>

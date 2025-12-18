@@ -694,12 +694,16 @@ Session saved to local storage
 - [x] Screen capture with overlay exclusion
 - [x] Streaming responses with markdown/LaTeX/code
 - [x] Settings window with API key management
-- [ ] Collapsible overlay (default collapsed)
-- [ ] Homepage with session history
-- [ ] Provider registry refactor
-- [ ] Local model support (OpenAI-compatible)
-- [ ] Fixed memory limits
-- [ ] Model switcher (shortcut + command)
+- [x] Collapsible overlay
+- [x] Homepage with session history
+- [x] Provider registry refactor
+- [x] Local model support (OpenAI-compatible: Ollama / LM Studio)
+- [x] Fixed memory limits
+- [x] Model selection dropdown + refresh
+- [x] Automatic screenshot mode
+- [x] System prompt modes (built-in + editable)
+- [x] Unit test suite (Vitest)
+- [ ] Model switcher (keyboard shortcut + command palette)
 
 ### 10.2 V1.x - Polish & Expansion
 
@@ -707,7 +711,6 @@ Session saved to local storage
 **Theme:** UX Improvements + More Providers
 
 **Features:**
-- [ ] Automatic screenshot mode
 - [ ] Session search and filtering
 - [ ] Additional providers (Groq, Mistral, Cohere)
 - [ ] Usage/cost tracking dashboard

@@ -48,6 +48,8 @@ async function handleSessionClick(id) {
   await window.electronAPI.resumeSessionInOverlay(id)
 }
 
+let selectedModeIdToDelete = null
+
 async function handleDeleteSession(id) {
   const result = await window.electronAPI.deleteSession(id)
   if (!result?.success) {
@@ -221,21 +223,20 @@ function toggleBulkModeUI(active) {
     deleteBtn.type = 'button'
     deleteBtn.innerHTML = `<span class="nav-icon" data-icon="trash"></span> Delete (${selectedSessionIds.size})`
     
-    deleteBtn.addEventListener('click', async () => {
+    deleteBtn.addEventListener('click', () => {
       const count = selectedSessionIds.size
       if (count === 0) return
       
-      const ok = window.confirm(`Permanently delete ${count} conversation${count === 1 ? '' : 's'}?`)
-      if (!ok) return
-
-      // Perform deletion
-      for (const id of selectedSessionIds) {
-        await window.electronAPI.deleteSession(id)
-      }
+      const modal = document.getElementById('delete-sessions-modal')
+      const title = document.getElementById('delete-sessions-title')
+      const msg = document.getElementById('delete-sessions-msg')
       
-      selectedSessionIds.clear()
-      updateBulkModeUI() // Reset UI
-      await loadSessions()
+      if (title) title.textContent = `Delete ${count} Conversation${count === 1 ? '' : 's'}?`
+      if (msg) msg.textContent = `Are you sure you want to permanently delete ${count} conversation${count === 1 ? '' : 's'}? This action cannot be undone.`
+      
+      modal?.classList.add('open')
+      const iconSpan = modal?.querySelector('[data-icon="trash"]')
+      if (iconSpan) insertIcon(iconSpan, 'trash')
     })
     container.appendChild(deleteBtn)
 
@@ -1201,13 +1202,11 @@ async function initModesView() {
       if (!modeId) return
 
       if (act === 'delete-mode') {
-        if (!window.confirm('Delete this mode?')) return
-        await window.electronAPI.deleteMode(modeId)
-        cachedModes = null
-        const s = await fetchModesState(true)
-        if (selectedModeId === modeId) selectedModeId = s.activeModeId
-        renderModesList(listEl, s)
-        await renderModeEditor(editorEl, s)
+        selectedModeIdToDelete = modeId
+        const modal = document.getElementById('delete-mode-modal')
+        modal?.classList.add('open')
+        const iconSpan = modal?.querySelector('[data-icon="trash"]')
+        if (iconSpan) insertIcon(iconSpan, 'trash')
       } else if (act === 'rename-mode') {
         const s = await fetchModesState(true)
         const mode = s.modes.find(m => m.id === modeId)
@@ -1746,6 +1745,12 @@ async function initConfigurationView() {
     setStatus(modelStatus, refreshed.error || 'Failed to refresh models.', 'bad')
   }
 
+  // dashboard config icons
+  container.querySelectorAll('[data-icon]').forEach(el => {
+    const name = el.getAttribute('data-icon')
+    if (name) insertIcon(el, name)
+  })
+
   configViewInitialized = true
 }
 
@@ -1817,6 +1822,18 @@ async function init() {
   const quitBtn = document.getElementById('quit-shade')
   const minimizeBtn = document.getElementById('dashboard-minimize')
   const closeBtn = document.getElementById('dashboard-close')
+  const sessionsDeleteAllBtn = document.getElementById('sessions-delete-all')
+  const deleteAllDataModal = document.getElementById('delete-all-data-modal')
+  const deleteAllDataConfirm = document.getElementById('delete-all-data-confirm')
+  const deleteAllDataCancel = document.getElementById('delete-all-data-cancel')
+
+  const deleteSessionsModal = document.getElementById('delete-sessions-modal')
+  const deleteSessionsConfirm = document.getElementById('delete-sessions-confirm')
+  const deleteSessionsCancel = document.getElementById('delete-sessions-cancel')
+
+  const deleteModeModal = document.getElementById('delete-mode-modal')
+  const deleteModeConfirm = document.getElementById('delete-mode-confirm')
+  const deleteModeCancel = document.getElementById('delete-mode-cancel')
 
   newChatBtn?.addEventListener('click', handleNewChat)
   
@@ -1840,6 +1857,103 @@ async function init() {
 
   minimizeBtn?.addEventListener('click', () => window.electronAPI.minimizeDashboard?.())
   closeBtn?.addEventListener('click', () => window.electronAPI.closeDashboard?.())
+
+  sessionsDeleteAllBtn?.addEventListener('click', () => {
+    deleteAllDataModal?.classList.add('open')
+    const iconSpan = deleteAllDataModal?.querySelector('[data-icon="trash"]')
+    if (iconSpan) insertIcon(iconSpan, 'trash')
+  })
+
+  deleteAllDataCancel?.addEventListener('click', () => {
+    deleteAllDataModal?.classList.remove('open')
+  })
+
+  deleteAllDataConfirm?.addEventListener('click', async () => {
+    try {
+      deleteAllDataConfirm.disabled = true
+      deleteAllDataConfirm.textContent = 'Deleting...'
+
+      const result = await window.electronAPI.deleteAllData?.()
+
+      if (result?.success) {
+        showToast('All data deleted', 'success')
+        // Refresh UI state
+        cachedModes = null
+        cachedProvidersMeta = null
+        cachedActiveProvider = null
+        await loadSessions().catch(console.error)
+      } else {
+        showToast(result?.error || 'Failed to delete data', 'error')
+      }
+
+      deleteAllDataModal?.classList.remove('open')
+    } catch (error) {
+      console.error('Failed to delete all data:', error)
+      showToast('Error deleting data', 'error')
+    } finally {
+      deleteAllDataConfirm.disabled = false
+      deleteAllDataConfirm.textContent = 'Delete Everything'
+    }
+  })
+
+  deleteSessionsCancel?.addEventListener('click', () => {
+    deleteSessionsModal?.classList.remove('open')
+  })
+
+  deleteSessionsConfirm?.addEventListener('click', async () => {
+    try {
+      deleteSessionsConfirm.disabled = true
+      deleteSessionsConfirm.textContent = 'Deleting...'
+
+      for (const id of selectedSessionIds) {
+        await window.electronAPI.deleteSession(id)
+      }
+      
+      selectedSessionIds.clear()
+      updateBulkModeUI()
+      await loadSessions()
+      
+      deleteSessionsModal?.classList.remove('open')
+    } catch (error) {
+      console.error('Failed to delete sessions:', error)
+      showToast('Error deleting conversations', 'error')
+    } finally {
+      deleteSessionsConfirm.disabled = false
+      deleteSessionsConfirm.textContent = 'Delete'
+    }
+  })
+
+  deleteModeCancel?.addEventListener('click', () => {
+    deleteModeModal?.classList.remove('open')
+    selectedModeIdToDelete = null
+  })
+
+  deleteModeConfirm?.addEventListener('click', async () => {
+    if (!selectedModeIdToDelete) return
+    try {
+      deleteModeConfirm.disabled = true
+      deleteModeConfirm.textContent = 'Deleting...'
+
+      await window.electronAPI.deleteMode(selectedModeIdToDelete)
+      cachedModes = null
+      const s = await fetchModesState(true)
+      if (selectedModeId === selectedModeIdToDelete) selectedModeId = s.activeModeId
+      
+      const listEl = document.getElementById('modes-list')
+      const editorEl = document.getElementById('mode-editor')
+      if (listEl) renderModesList(listEl, s)
+      if (editorEl) await renderModeEditor(editorEl, s)
+
+      deleteModeModal?.classList.remove('open')
+    } catch (error) {
+      console.error('Failed to delete mode:', error)
+      showToast('Error deleting mode', 'error')
+    } finally {
+      deleteModeConfirm.disabled = false
+      deleteModeConfirm.textContent = 'Delete Mode'
+      selectedModeIdToDelete = null
+    }
+  })
 
   searchInput?.addEventListener('input', (e) => {
     const value = e.target.value
@@ -1914,6 +2028,25 @@ async function init() {
 
   renameCancel?.addEventListener('click', closeRenameModal)
   renameSave?.addEventListener('click', () => submitRenameModal().catch(console.error))
+
+  deleteAllDataModal?.addEventListener('click', (e) => {
+    if (e.target === deleteAllDataModal) {
+      deleteAllDataModal.classList.remove('open')
+    }
+  })
+
+  deleteSessionsModal?.addEventListener('click', (e) => {
+    if (e.target === deleteSessionsModal) {
+      deleteSessionsModal.classList.remove('open')
+    }
+  })
+
+  deleteModeModal?.addEventListener('click', (e) => {
+    if (e.target === deleteModeModal) {
+      deleteModeModal.classList.remove('open')
+      selectedModeIdToDelete = null
+    }
+  })
 
   renameModal?.addEventListener('click', (e) => {
     if (e.target === renameModal) {
