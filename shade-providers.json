@@ -49,6 +49,7 @@
   "grok": {
     "name": "Grok (X.AI)",
     "type": "openai-compatible",
+    "requiresApiKey": true,
     "description": "X.AI's vision-capable models",
     "website": "https://console.x.ai",
     "baseUrl": "https://api.x.ai/v1",
@@ -62,6 +63,7 @@
   "openrouter": {
     "name": "OpenRouter",
     "type": "openai-compatible",
+    "requiresApiKey": true,
     "description": "Access multiple AI models through one API",
     "website": "https://openrouter.ai/keys",
     "baseUrl": "https://openrouter.ai/api/v1",
@@ -77,6 +79,7 @@
   "ollama": {
     "name": "Ollama",
     "type": "openai-compatible",
+    "requiresApiKey": false,
     "description": "Run local models on your machine",
     "website": "https://ollama.ai/",
     "baseUrl": "http://localhost:11434/v1",
@@ -91,6 +94,7 @@
   "lm-studio": {
     "name": "LM Studio",
     "type": "openai-compatible",
+    "requiresApiKey": false,
     "description": "Run local models with LM Studio",
     "website": "https://lmstudio.ai/",
     "baseUrl": "http://localhost:1234/v1",

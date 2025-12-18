@@ -149,16 +149,22 @@ class CustomProvider extends LLMProvider {
    */
   async validateApiKey() {
     try {
-      // Simple test request with minimal token usage
-      await this.client.chat.completions.create({
-        model: this.modelName,
-        messages: [{ role: 'user', content: 'Hi' }],
-        max_tokens: 100
-      })
+      // Prefer a non-billable endpoint (no token usage).
+      await this.client.models.list()
       return true
     } catch (error) {
-      console.error('Custom provider validation failed:', error.message)
-      return false
+      // Fallback: some OpenAI-compatible servers may not implement /models.
+      try {
+        await this.client.chat.completions.create({
+          model: this.modelName,
+          messages: [{ role: 'user', content: 'Hi' }],
+          max_tokens: 20
+        })
+        return true
+      } catch (inner) {
+        console.error('Custom provider validation failed:', inner.message || error.message)
+        return false
+      }
     }
   }
 

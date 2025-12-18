@@ -148,12 +148,8 @@ class OpenAIProvider extends LLMProvider {
    */
   async validateApiKey() {
     try {
-      // Simple test request with minimal token usage
-      await this.client.chat.completions.create({
-        model: this.modelName,
-        messages: [{ role: 'user', content: 'Hi' }],
-        max_completion_tokens: 100
-      })
+      // Prefer a non-billable endpoint (no token usage).
+      await this.client.models.list()
       return true
     } catch (error) {
       console.error('API key validation failed:', error.message)

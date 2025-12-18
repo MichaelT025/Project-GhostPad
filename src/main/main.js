@@ -262,7 +262,18 @@ ipcMain.handle('capture-screen', async () => {
 
 // Helper function to check if provider is local (doesn't require API key)
 function isLocalProvider(providerName) {
-  return providerName === 'ollama' || providerName === 'lm-studio'
+  try {
+    const meta = LLMFactory.getProviderMeta(providerName)
+    if (!meta) return false
+
+    // Prefer explicit flag (used for openai-compatible providers).
+    if (meta.requiresApiKey === false) return true
+
+    // Fallback: treat localhost OpenAI-compatible endpoints as local.
+    return meta.type === 'openai-compatible' && typeof meta.baseUrl === 'string' && meta.baseUrl.includes('localhost')
+  } catch {
+    return false
+  }
 }
 
 ipcMain.handle('send-message', async (event, { text, imageBase64, conversationHistory, summary }) => {

@@ -28,8 +28,10 @@ class LLMFactory {
     // Merge config with model-specific options
     const finalConfig = { ...config, ...modelOptions }
 
-    // API key is optional for some local providers
-    const requiresApiKey = providerMeta.type !== 'openai-compatible'
+    const requiresApiKey = providerMeta.requiresApiKey !== undefined
+      ? providerMeta.requiresApiKey
+      : providerMeta.type !== 'openai-compatible'
+
     if (requiresApiKey && !apiKey) {
       throw new Error(`API key is required for provider: ${providerName}`)
     }

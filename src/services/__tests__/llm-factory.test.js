@@ -101,10 +101,22 @@ describe('LLMFactory', () => {
       expect(provider.getName()).toBe('custom')
     })
 
+    test('should require API key for custom provider (OpenRouter)', () => {
+      expect(() => {
+        LLMFactory.createProvider('openrouter', '')
+      }).toThrow('API key is required')
+    })
+
     test('should create custom provider (Grok) with API key', () => {
       const provider = LLMFactory.createProvider('grok', 'test-key')
       expect(provider).toBeDefined()
       expect(provider.getName()).toBe('custom')
+    })
+
+    test('should require API key for custom provider (Grok)', () => {
+      expect(() => {
+        LLMFactory.createProvider('grok', '')
+      }).toThrow('API key is required')
     })
 
     test('should create custom provider (Ollama) without API key', () => {

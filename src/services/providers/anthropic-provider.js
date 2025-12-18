@@ -145,7 +145,13 @@ class AnthropicProvider extends LLMProvider {
    */
   async validateApiKey() {
     try {
-      // Simple test request with minimal token usage
+      // Prefer a non-billable endpoint (no token usage) when supported.
+      if (this.client.models?.list) {
+        await this.client.models.list()
+        return true
+      }
+
+      // Fallback for older SDKs.
       await this.client.messages.create({
         model: this.modelName,
         max_tokens: 10,

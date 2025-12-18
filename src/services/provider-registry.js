@@ -79,6 +79,7 @@ const defaultProviders = {
   grok: {
     name: 'Grok (X.AI)',
     type: 'openai-compatible',
+    requiresApiKey: true,
     description: 'X.AI\'s vision-capable models',
     website: 'https://console.x.ai',
     baseUrl: 'https://api.x.ai/v1',
@@ -92,6 +93,7 @@ const defaultProviders = {
   openrouter: {
     name: 'OpenRouter',
     type: 'openai-compatible',
+    requiresApiKey: true,
     description: 'Access multiple AI models through one API',
     website: 'https://openrouter.ai/keys',
     baseUrl: 'https://openrouter.ai/api/v1',
@@ -107,6 +109,7 @@ const defaultProviders = {
   ollama: {
     name: 'Ollama',
     type: 'openai-compatible',
+    requiresApiKey: false,
     description: 'Run local models on your machine',
     website: 'https://ollama.ai/',
     baseUrl: 'http://localhost:11434/v1',
@@ -121,6 +124,7 @@ const defaultProviders = {
   'lm-studio': {
     name: 'LM Studio',
     type: 'openai-compatible',
+    requiresApiKey: false,
     description: 'Run local models with LM Studio',
     website: 'https://lmstudio.ai/',
     baseUrl: 'http://localhost:1234/v1',
@@ -182,6 +186,12 @@ function loadProviders() {
           }
 
           providers[providerId].models = existingModels
+
+          // Migrate: ensure requiresApiKey exists for openai-compatible providers
+          if (providerData.type === 'openai-compatible' && providers[providerId].requiresApiKey === undefined) {
+            providers[providerId].requiresApiKey = providerData.requiresApiKey
+            needsSave = true
+          }
         }
       }
 
