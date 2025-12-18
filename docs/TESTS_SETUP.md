@@ -1,6 +1,6 @@
-# Shade Test Suite Walkthrough
+# GhostPad Test Suite Walkthrough
 
-This document provides a comprehensive guide to the Shade test suite, explaining how the tests work, what they cover, and how to run them effectively.
+This document provides a comprehensive guide to the GhostPad test suite, explaining how the tests work, what they cover, and how to run them effectively.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ This document provides a comprehensive guide to the Shade test suite, explaining
 
 ## Overview
 
-Shade uses **Vitest** as its testing framework. The test suite is designed to validate:
+GhostPad uses **Vitest** as its testing framework. The test suite is designed to validate:
 
 - **Services layer**: Configuration, sessions, LLM providers, screen capture
 - **Utilities**: Memory management for conversations
@@ -25,11 +25,12 @@ Shade uses **Vitest** as its testing framework. The test suite is designed to va
 - **Data persistence**: File-based storage and migration
 
 **Key Statistics:**
-- **Test Framework**: Vitest 4.0.16
+- **Test Framework**: Vitest 4.0.15
 - **Test Environment**: Node.js
 - **Coverage Tool**: V8
 - **Total Test Files**: 7
-- **Individual Tests**: 210 (195 passing, 15 skipped)
+- **Test Suites**: 85+
+- **Individual Tests**: 200+
 
 ---
 
@@ -37,7 +38,7 @@ Shade uses **Vitest** as its testing framework. The test suite is designed to va
 
 ### Vitest Configuration
 
-Located in [vitest.config.js](../vitest.config.js):
+Located in [vitest.config.js](../../../vitest.config.js):
 
 ```javascript
 {
@@ -901,7 +902,7 @@ beforeEach(() => {
 
 ## Summary
 
-The Shade test suite provides comprehensive coverage of:
+The GhostPad test suite provides comprehensive coverage of:
 
 ✅ **Configuration Management** - 65 tests
 ✅ **Session Persistence** - 42 tests
