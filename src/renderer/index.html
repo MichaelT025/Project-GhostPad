@@ -386,6 +386,38 @@
       padding: var(--space-8) var(--space-12);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
+      transition: border-color var(--duration-normal) var(--easing), box-shadow var(--duration-normal) var(--easing);
+    }
+
+    .input-container.generating {
+      border-color: rgba(182, 179, 180, 0.5);
+      animation: input-pulse 2s ease-in-out infinite;
+    }
+
+    .input-container.generating.thinking {
+      animation: input-pulse-thinking 4s ease-in-out infinite;
+    }
+
+    @keyframes input-pulse {
+      0%, 100% { 
+        box-shadow: 0 0 0 0 rgba(182, 179, 180, 0); 
+        border-color: rgba(182, 179, 180, 0.1);
+      }
+      50% { 
+        box-shadow: 0 0 15px 0 rgba(182, 179, 180, 0.2); 
+        border-color: rgba(182, 179, 180, 0.5);
+      }
+    }
+
+    @keyframes input-pulse-thinking {
+      0%, 100% { 
+        box-shadow: 0 0 0 0 rgba(182, 179, 180, 0); 
+        border-color: rgba(182, 179, 180, 0.05);
+      }
+      50% { 
+        box-shadow: 0 0 25px 0 rgba(182, 179, 180, 0.3); 
+        border-color: rgba(182, 179, 180, 0.7);
+      }
     }
 
     .input-row {

@@ -31,6 +31,7 @@ let startCollapsedSetting = true
 const messagesContainer = document.getElementById('messages-container')
 let chatWrapper = document.getElementById('chat-wrapper') // Use let for reassignment after new chat
 const messageInput = document.getElementById('message-input')
+const inputContainer = document.querySelector('.input-container')
 const sendBtn = document.getElementById('send-btn')
 const screenshotBtn = document.getElementById('screenshot-btn')
 const homeBtn = document.getElementById('home-btn')
@@ -589,7 +590,7 @@ async function handleScreenshotCapture() {
       messageInput.placeholder = 'Ask about the captured screen...'
       
       console.log('Screenshot captured and attached')
-      // showToast('Screenshot captured', 'success', 2000)
+      showToast('Screenshot captured', 'success', 1500)
     } else {
       console.error('Screenshot capture failed:', result.error)
       showToast('Failed to capture screenshot: ' + result.error, 'error')
@@ -707,6 +708,10 @@ async function handleSendMessage() {
 
     // Add loading indicator
     const loadingId = addLoadingMessage()
+    inputContainer.classList.add('generating')
+    if (modeDropdownInput.value === 'thinker') {
+      inputContainer.classList.add('thinking')
+    }
 
     // Reset streaming state
     currentStreamingMessageId = null
@@ -816,17 +821,9 @@ function handleMessageChunk(chunk) {
  * Handle streaming completion
  */
 function handleMessageComplete() {
-  const finishedText = accumulatedText
-
-  if (currentStreamingMessageId) {
-    // Finalize the message (remove cursor, store in history)
-    finalizeStreamingMessage(currentStreamingMessageId, finishedText)
-  }
-
-  // Auto-title sessions after the first assistant reply
-  maybeAutoTitleSessionFromFirstReply(finishedText)
-
-  // Reset streaming state
+  console.log('Streaming complete')
+  inputContainer.classList.remove('generating')
+  inputContainer.classList.remove('thinking')
   currentStreamingMessageId = null
   accumulatedText = ''
 }
@@ -837,6 +834,8 @@ function handleMessageComplete() {
  */
 function handleMessageError(error) {
   console.error('Streaming error:', error)
+  inputContainer.classList.remove('generating')
+  inputContainer.classList.remove('thinking')
 
   if (currentStreamingMessageId) {
     // Remove the incomplete streaming message

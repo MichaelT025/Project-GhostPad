@@ -705,66 +705,27 @@
 
     /* View Containers */
     .view-container {
-      display: flex;
+      display: none;
       flex-direction: column;
-      height: 100%;
-      gap: var(--space-16);
-      overflow: hidden;
-      flex: 1;
+      gap: var(--space-20);
+      animation: view-in 0.35s var(--easing);
     }
 
-    /* Shortcuts Styles */
-    .shortcuts-list {
-      display: grid;
-      gap: 8px;
-      overflow-y: auto;
-      padding-right: 6px;
-      flex: 1;
+    @keyframes view-in {
+      from { 
+        opacity: 0; 
+        transform: translateY(10px); 
+      }
+      to { 
+        opacity: 1; 
+        transform: translateY(0); 
+      }
     }
 
-    .shortcut-item {
+    .view-container.active {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: var(--space-16);
-      padding: var(--space-12) var(--space-16);
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: var(--radius-lg);
-      transition: all var(--duration-quick) var(--easing);
     }
 
-    .shortcut-item:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.12);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-elev-1);
-    }
-
-    .shortcut-label {
-      font-size: 13px;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-
-    .shortcut-keys {
-      display: flex;
-      gap: 6px;
-    }
-
-    .key-badge {
-      padding: 4px 8px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 6px;
-      font-size: 12px;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--accent);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      min-width: 24px;
-      text-align: center;
-    }
-
-    /* Configuration view */
     .config-card {
       padding: var(--space-16);
       background: rgba(255, 255, 255, 0.03);
@@ -1123,13 +1084,13 @@
             <span class="nav-icon" data-icon="session"></span>
             Sessions
           </button>
-          <button id="nav-modes" class="nav-btn" type="button">
-            <span class="nav-icon" data-icon="robot"></span>
-            Modes
-          </button>
           <button id="nav-configuration" class="nav-btn" type="button">
             <span class="nav-icon" data-icon="config"></span>
             Configuration
+          </button>
+          <button id="nav-modes" class="nav-btn" type="button">
+            <span class="nav-icon" data-icon="robot"></span>
+            Modes
           </button>
           <button id="nav-shortcuts" class="nav-btn" type="button">
             <span class="nav-icon" data-icon="keyboard"></span>

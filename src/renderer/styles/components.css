@@ -4,6 +4,19 @@
  */
 
 /* ========================================
+   GLOBAL BUTTON TACTILE FEEDBACK
+   ======================================== */
+
+button:active, 
+.action-btn:active, 
+.nav-btn:active, 
+.mini-btn:active, 
+.icon-btn:active, 
+.secondary-btn:active {
+  transform: scale(0.96);
+}
+
+/* ========================================
    SCREENSHOT CHIP
    ======================================== */
 
@@ -81,25 +94,28 @@
 .toast {
   position: fixed;
   bottom: var(--space-24);
-  left: var(--space-24);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
   display: flex;
   align-items: center;
   gap: var(--space-12);
   padding: var(--space-12) var(--space-16);
-  background: var(--panel-strong);
+  background: rgba(24, 27, 36, 0.85);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-elev-2);
+  border-radius: 999px;
+  box-shadow: var(--shadow-elev-3);
   z-index: var(--z-toast);
   opacity: 0;
-  transform: translateY(20px);
   transition: all var(--duration-normal) var(--easing);
-  max-width: 400px;
+  max-width: 90%;
+  width: max-content;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .toast.show {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
 }
 
 .toast-icon {

@@ -498,11 +498,13 @@ async function loadSessions(query = '') {
 function showView(viewId) {
   document.querySelectorAll('.view-container').forEach(el => {
     el.style.display = 'none'
+    el.classList.remove('active')
   })
 
   const view = document.getElementById(viewId)
   if (view) {
     view.style.display = 'flex'
+    view.classList.add('active')
   }
 }
 
@@ -1066,7 +1068,7 @@ async function initModesView() {
       restoreModal?.classList.remove('open')
     } catch (err) {
       console.error('Failed to reset modes:', err)
-      alert('Failed to reset modes: ' + err.message)
+      showToast('Failed to reset modes: ' + err.message, 'error')
     } finally {
       restoreConfirm.disabled = false
       restoreConfirm.textContent = 'Reset Everything'
@@ -1105,7 +1107,7 @@ async function initModesView() {
       resetPromptModal?.classList.remove('open')
     } catch (err) {
       console.error('Failed to reset prompt:', err)
-      alert('Failed to reset prompt: ' + err.message)
+      showToast('Failed to reset prompt: ' + err.message, 'error')
     } finally {
       resetPromptConfirm.disabled = false
       resetPromptConfirm.textContent = 'Reset Prompt'
