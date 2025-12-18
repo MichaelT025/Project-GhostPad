@@ -906,6 +906,31 @@ ipcMain.handle('set-auto-title-sessions', async (_event, enabled) => {
   }
 })
 
+ipcMain.handle('get-start-collapsed', async () => {
+  try {
+    const startCollapsed = configService.getStartCollapsed()
+    return { success: true, startCollapsed }
+  } catch (error) {
+    console.error('Failed to get start collapsed setting:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('set-start-collapsed', async (_event, startCollapsed) => {
+  try {
+    configService.setStartCollapsed(startCollapsed)
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('config-changed')
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to set start collapsed setting:', error)
+    return { success: false, error: error.message }
+  }
+})
+
 // Model refresh IPC handlers
 ipcMain.handle('refresh-models', async (_event, providerId) => {
   try {

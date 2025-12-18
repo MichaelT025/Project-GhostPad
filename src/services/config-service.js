@@ -80,7 +80,8 @@ function migrateConfig(oldConfig) {
       excludeScreenshotsFromMemory: true
     },
     sessionSettings: {
-      autoTitleSessions: true
+      autoTitleSessions: true,
+      startCollapsed: true
     }
   }
 
@@ -164,7 +165,8 @@ class ConfigService {
         excludeScreenshotsFromMemory: true
       },
       sessionSettings: {
-        autoTitleSessions: true
+        autoTitleSessions: true,
+        startCollapsed: true
       }
     }
 
@@ -550,6 +552,19 @@ class ConfigService {
       this.config.sessionSettings = this.defaultConfig.sessionSettings
     }
     this.config.sessionSettings.autoTitleSessions = !!enabled
+    this.saveConfig()
+  }
+
+  getStartCollapsed() {
+    const settings = this.getSessionSettings()
+    return settings.startCollapsed !== false
+  }
+
+  setStartCollapsed(startCollapsed) {
+    if (!this.config.sessionSettings) {
+      this.config.sessionSettings = this.defaultConfig.sessionSettings
+    }
+    this.config.sessionSettings.startCollapsed = !!startCollapsed
     this.saveConfig()
   }
 }

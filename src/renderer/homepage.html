@@ -797,6 +797,12 @@
       outline: none;
     }
 
+    /* Make the model picker render as a downward list (not an OS popup) */
+    .select-input[size] {
+      height: auto;
+      padding: var(--space-8) var(--space-12);
+    }
+
     /* Ensure dropdown list matches app theme */
     .select-input option,
     .select-input optgroup {

@@ -91,6 +91,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Session settings
   getSessionSettings: () => ipcRenderer.invoke('get-session-settings'),
   setAutoTitleSessions: (enabled) => ipcRenderer.invoke('set-auto-title-sessions', enabled),
+  getStartCollapsed: () => ipcRenderer.invoke('get-start-collapsed'),
+  setStartCollapsed: (startCollapsed) => ipcRenderer.invoke('set-start-collapsed', startCollapsed),
   generateSessionTitle: (assistantReply) => ipcRenderer.invoke('generate-session-title', assistantReply),
 
   // Display detection

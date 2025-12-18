@@ -22,7 +22,10 @@ let isCollapsed = true // Overlay collapse state (starts collapsed)
 let screenshotMode = 'manual' // 'manual' | 'auto'
 let excludeScreenshotsFromMemory = true
 let autoTitleSessions = true
-let sessionAutoTitleApplied = false
+  let sessionAutoTitleApplied = false
+
+let startCollapsedSetting = true
+
 
 // DOM element references
 const messagesContainer = document.getElementById('messages-container')
@@ -220,15 +223,17 @@ function measureCollapsedHeight() {
  */
 async function loadBehaviorSettings() {
   try {
-    const [screenshotModeResult, excludeResult, sessionSettingsResult] = await Promise.all([
+    const [screenshotModeResult, excludeResult, sessionSettingsResult, startCollapsedResult] = await Promise.all([
       window.electronAPI.getScreenshotMode?.(),
       window.electronAPI.getExcludeScreenshotsFromMemory?.(),
-      window.electronAPI.getSessionSettings?.()
+      window.electronAPI.getSessionSettings?.(),
+      window.electronAPI.getStartCollapsed?.()
     ])
 
     screenshotMode = screenshotModeResult?.success ? (screenshotModeResult.mode === 'auto' ? 'auto' : 'manual') : 'manual'
     excludeScreenshotsFromMemory = excludeResult?.success ? excludeResult.exclude !== false : true
     autoTitleSessions = sessionSettingsResult?.success ? sessionSettingsResult.settings?.autoTitleSessions !== false : true
+    startCollapsedSetting = startCollapsedResult?.success ? startCollapsedResult.startCollapsed !== false : true
 
     // In auto mode, keep the image icon "toggled on" and make it informational.
     if (screenshotBtn) {
@@ -380,6 +385,10 @@ async function init() {
     }
 
     await loadBehaviorSettings()
+
+    // If the user changed startup behavior, apply it immediately.
+    isCollapsed = !!startCollapsedSetting
+    updateCollapseState()
   })
 
   // Streaming event handlers
@@ -424,7 +433,8 @@ async function init() {
   // Auto-focus the input field so keyboard shortcuts work immediately
   messageInput.focus()
 
-  // Initialize collapsed state (starts collapsed)
+  // Initialize collapsed state from settings
+  isCollapsed = !!startCollapsedSetting
   updateCollapseState()
 
   window.electronAPI.onResumeSession((sessionId) => {

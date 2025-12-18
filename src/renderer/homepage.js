@@ -609,7 +609,7 @@ function renderConfig(container, state) {
       <div class="form-row" style="margin-top: var(--space-12);">
         <div class="form-field">
           <label for="config-model-select">Default model</label>
-          <select id="config-model-select" class="select-input"></select>
+          <select id="config-model-select" class="select-input" size="6"></select>
           <div id="config-model-status" class="status-line"></div>
         </div>
       </div>
@@ -617,7 +617,7 @@ function renderConfig(container, state) {
 
     <div class="config-card">
       <h2>Sessions</h2>
-      <p>Control how sessions are named.</p>
+      <p>Control session naming and startup behavior.</p>
       <div class="form-row">
         <div class="form-field">
           <label>Auto-title sessions</label>
@@ -627,6 +627,19 @@ function renderConfig(container, state) {
               <span class="toggle-slider"></span>
             </label>
             <div id="config-auto-title-msg" class="helper-text" style="margin-top: 0;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top: var(--space-10);">
+        <div class="form-field">
+          <label>Start overlay collapsed</label>
+          <div class="inline-actions">
+            <label class="toggle-switch" aria-label="Start overlay collapsed">
+              <input id="config-start-collapsed" type="checkbox" />
+              <span class="toggle-slider"></span>
+            </label>
+            <div id="config-start-collapsed-msg" class="helper-text" style="margin-top: 0;"></div>
           </div>
         </div>
       </div>
@@ -777,6 +790,8 @@ async function initConfigurationView() {
 
   const autoTitleToggle = container.querySelector('#config-auto-title')
   const autoTitleMsg = container.querySelector('#config-auto-title-msg')
+  const startCollapsedToggle = container.querySelector('#config-start-collapsed')
+  const startCollapsedMsg = container.querySelector('#config-start-collapsed-msg')
   const screenshotModeToggle = container.querySelector('#config-screenshot-mode')
   const screenshotModeMsg = container.querySelector('#config-screenshot-mode-msg')
   const excludeScreenshotsToggle = container.querySelector('#config-exclude-screenshots')
@@ -796,6 +811,13 @@ async function initConfigurationView() {
       : 'Manual mode: use the camera button / hotkey to attach a screenshot.'
   }
 
+  const setStartCollapsedMsg = (startCollapsed) => {
+    if (!startCollapsedMsg) return
+    startCollapsedMsg.textContent = startCollapsed
+      ? 'On: overlay starts collapsed.'
+      : 'Off: overlay starts expanded.'
+  }
+
   const setExcludeScreenshotsMsg = (exclude) => {
     if (!excludeScreenshotsMsg) return
     excludeScreenshotsMsg.textContent = exclude
@@ -807,8 +829,9 @@ async function initConfigurationView() {
 
   // Load and apply non-provider settings
   try {
-    const [sessionSettingsResult, screenshotModeResult, excludeResult] = await Promise.all([
+    const [sessionSettingsResult, startCollapsedResult, screenshotModeResult, excludeResult] = await Promise.all([
       window.electronAPI.getSessionSettings(),
+      window.electronAPI.getStartCollapsed(),
       window.electronAPI.getScreenshotMode(),
       window.electronAPI.getExcludeScreenshotsFromMemory()
     ])
@@ -820,6 +843,12 @@ async function initConfigurationView() {
     if (autoTitleToggle) {
       autoTitleToggle.checked = autoTitleEnabled
       setAutoTitleMsg(autoTitleEnabled)
+    }
+
+    if (startCollapsedToggle) {
+      const startCollapsed = startCollapsedResult?.success ? startCollapsedResult.startCollapsed !== false : true
+      startCollapsedToggle.checked = startCollapsed
+      setStartCollapsedMsg(startCollapsed)
     }
 
     if (screenshotModeToggle) {
@@ -859,6 +888,16 @@ async function initConfigurationView() {
     }
   })
 
+  startCollapsedToggle?.addEventListener('change', async () => {
+    try {
+      const startCollapsed = !!startCollapsedToggle.checked
+      setStartCollapsedMsg(startCollapsed)
+      await window.electronAPI.setStartCollapsed(startCollapsed)
+    } catch (error) {
+      console.error('Failed to update start collapsed setting:', error)
+    }
+  })
+ 
   screenshotModeToggle?.addEventListener('change', async () => {
     try {
       const isAuto = !!screenshotModeToggle.checked
