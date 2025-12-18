@@ -70,7 +70,7 @@
       padding: 2px 8px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.1);
       color: var(--text-secondary);
       font-weight: 600;
     }
@@ -129,8 +129,9 @@
       right: var(--space-20);
       display: flex;
       gap: var(--space-8);
-      z-index: 100;
+      z-index: 9999;
       -webkit-app-region: no-drag;
+      pointer-events: auto;
     }
 
     .control-btn {
@@ -145,6 +146,13 @@
       color: var(--text-secondary);
       cursor: pointer;
       transition: all var(--duration-quick) var(--easing);
+      -webkit-app-region: no-drag;
+      pointer-events: auto;
+    }
+
+    .control-btn * {
+      -webkit-app-region: no-drag;
+      pointer-events: none;
     }
 
     .control-btn:hover {
@@ -162,6 +170,16 @@
       display: flex;
       flex-direction: column;
       gap: var(--space-24);
+    }
+
+    .dashboard-titlebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      -webkit-app-region: drag;
+      z-index: 10000;
     }
 
     .social-links {
@@ -198,13 +216,13 @@
       display: flex;
       align-items: center;
       justify-content: flex-start;
-      gap: var(--space-12);
-      padding: var(--space-12) var(--space-16);
+      gap: var(--space-8);
+      padding: var(--space-8) var(--space-12);
       border-radius: var(--radius-md);
       border: 1px solid transparent;
       background: transparent;
       color: var(--text-secondary);
-      font-size: var(--font-size-base);
+      font-size: var(--font-size-xs);
       font-weight: 500;
       cursor: pointer;
       transition: background var(--duration-quick) var(--easing), color var(--duration-quick) var(--easing), border-color var(--duration-quick) var(--easing);
@@ -216,12 +234,24 @@
       color: var(--text-primary);
     }
 
+    .footer-btn.danger:hover {
+      background: rgba(255, 107, 107, 0.12);
+      color: #ff6b6b;
+      border-color: rgba(255, 107, 107, 0.2);
+    }
+
+    .footer-btn .nav-icon {
+      width: 16px;
+      height: 16px;
+    }
+
     .main {
+      position: relative;
       display: flex;
       flex-direction: column;
       height: 100vh;
       overflow: hidden;
-      padding: var(--space-20) var(--space-20);
+      padding: calc(var(--space-20) + 56px) var(--space-20) var(--space-20);
       gap: var(--space-16);
     }
 
@@ -230,6 +260,7 @@
       align-items: flex-start;
       justify-content: space-between;
       gap: var(--space-12);
+      padding-right: 90px;
     }
 
     .header h1 {
@@ -242,30 +273,6 @@
       margin-top: 4px;
       color: var(--text-secondary);
       font-size: var(--font-size-base);
-    }
-
-    .header-actions {
-      display: flex;
-      gap: var(--space-8);
-      align-items: center;
-      padding-right: 88px;
-    }
-
-    .primary-btn {
-      padding: var(--space-10) var(--space-16);
-      border-radius: 999px;
-      border: 1px solid rgba(0, 0, 0, 0.25);
-      background: var(--accent);
-      color: #0c0e12;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: var(--font-size-sm);
-      transition: transform var(--duration-quick) var(--easing), background var(--duration-quick) var(--easing);
-    }
-
-    .primary-btn:hover {
-      background: var(--accent-strong);
-      transform: translateY(-1px);
     }
 
     .secondary-btn {
@@ -316,6 +323,8 @@
       border: none;
       outline: none;
       background: transparent;
+      background-color: transparent;
+      box-shadow: none;
       color: var(--text-primary);
       font-size: var(--font-size-base);
       padding: 0;
@@ -323,6 +332,86 @@
 
     .search input::placeholder {
       color: var(--text-tertiary);
+    }
+
+    /* Override global focus ring for just this input */
+    .search input:focus,
+    .search input:focus-visible {
+      outline: none;
+      box-shadow: none;
+      background: transparent;
+    }
+
+    /* Prevent browser autofill from painting a white background */
+    .search input:-webkit-autofill,
+    .search input:-webkit-autofill:hover,
+    .search input:-webkit-autofill:focus,
+    .search input:-webkit-autofill:active {
+      -webkit-box-shadow: 0 0 0px 1000px transparent inset;
+      box-shadow: 0 0 0px 1000px transparent inset;
+      -webkit-text-fill-color: var(--text-primary);
+      background: transparent !important;
+    }
+
+    .quick-actions {
+      margin-bottom: var(--space-8);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-8);
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-8);
+      padding: var(--space-12);
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: var(--font-size-sm);
+      cursor: pointer;
+      transition: all var(--duration-quick) var(--easing);
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .action-btn.primary {
+      background: var(--accent);
+      color: #0c0e12;
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .action-btn.primary:hover {
+      background: var(--accent-strong);
+      transform: translateY(-1px);
+    }
+
+    .action-btn.danger {
+      background: var(--danger);
+      color: white;
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .action-btn.danger:hover {
+      background: #ff5252;
+      transform: translateY(-1px);
+    }
+
+    .action-btn.active {
+      background: var(--accent);
+      color: #0c0e12;
+      border-color: transparent;
+    }
+
+    .action-btn.active:hover {
+      background: var(--accent-strong);
     }
 
     .content {
@@ -369,6 +458,7 @@
 
     .session-left {
       display: flex;
+      flex: 1;
       flex-direction: column;
       gap: 6px;
       min-width: 0;
@@ -381,6 +471,25 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .star-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      color: var(--warning);
+      flex-shrink: 0;
+    }
+
+    .star-icon svg {
+      width: 100%;
+      height: 100%;
+      fill: currentColor;
     }
 
     .session-subtitle {
@@ -399,59 +508,94 @@
       align-items: center;
       gap: var(--space-8);
       flex-shrink: 0;
-    }
-
-    .pill {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(255, 255, 255, 0.04);
-      color: var(--text-secondary);
-      font-weight: 600;
-      letter-spacing: 0.2px;
-    }
-
-    .timestamp {
-      font-size: var(--font-size-xs);
-      color: var(--text-tertiary);
-      font-variant-numeric: tabular-nums;
-      min-width: 62px;
-      text-align: right;
-      opacity: 0.8;
+      min-width: 100px; /* Ensure space */
+      justify-content: flex-end;
     }
 
     .delete-btn {
-      position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      display: none;
-      width: 32px;
-      height: 32px;
+      display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 107, 107, 0.35);
-      background: rgba(255, 107, 107, 0.15);
-      color: rgba(255, 230, 230, 0.95);
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-tertiary);
       cursor: pointer;
       transition: all var(--duration-quick) var(--easing);
-      z-index: 2;
-    }
-
-    .trash-icon {
-      width: 14px;
-      height: 14px;
-    }
-    
-    .delete-btn:hover {
-      background: rgba(255, 107, 107, 0.25);
-      transform: translateY(-50%) scale(1.05);
+      opacity: 0; /* Hidden by default */
     }
 
     .session-card:hover .delete-btn {
-      display: inline-flex;
+      opacity: 1;
+      background: var(--danger);
+      border-color: transparent;
+      color: white;
+      box-shadow: var(--shadow-elev-2);
+    }
+
+
+    .session-card:hover .delete-btn {
+      opacity: 1;
+      background: var(--danger);
+      border-color: transparent;
+      color: #fff;
+    }
+
+
+    .session-card:hover .delete-btn {
+      opacity: 1;
+      background: var(--danger);
+      border-color: rgba(0, 0, 0, 0.2);
+      color: white;
+    }
+
+
+    .session-card:hover .timestamp {
+      display: none; /* Hide timestamp on hover to show delete */
+    }
+
+    /* Checkbox Styles */
+    .session-checkbox-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .session-checkbox {
+      width: 18px;
+      height: 18px;
+      border: 1px solid var(--text-tertiary);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      position: relative;
+      transition: all var(--duration-quick) var(--easing);
+    }
+
+    .session-checkbox:hover {
+      border-color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .session-checkbox:checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .session-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      top: 1px;
+      left: 5px;
+      width: 4px;
+      height: 9px;
+      border: solid #0c0e12;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
     }
 
     .empty {
@@ -478,6 +622,215 @@
       max-width: 520px;
     }
 
+    /* View Containers */
+    .view-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      gap: var(--space-16);
+      overflow: hidden;
+      flex: 1;
+    }
+
+    /* Shortcuts Styles */
+    .shortcuts-list {
+      display: grid;
+      gap: 8px;
+      overflow-y: auto;
+      padding-right: 6px;
+      flex: 1;
+    }
+
+    .shortcut-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+
+    .shortcut-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .shortcut-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .shortcut-keys {
+      display: flex;
+      gap: 6px;
+    }
+
+    .key-badge {
+      padding: 4px 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      min-width: 24px;
+      text-align: center;
+    }
+
+    /* Configuration view */
+    .config-card {
+      padding: var(--space-16);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-lg);
+      margin-bottom: var(--space-12);
+    }
+
+    .config-card h2 {
+      font-size: var(--font-size-h2);
+      margin: 0 0 var(--space-8) 0;
+    }
+
+    .config-card p {
+      color: var(--text-tertiary);
+      margin: 0 0 var(--space-12) 0;
+    }
+
+    .form-row {
+      display: flex;
+      gap: var(--space-12);
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-8);
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .form-field label {
+      font-size: var(--font-size-xs);
+      color: var(--text-tertiary);
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .text-input,
+    .select-input {
+      height: 40px;
+      padding: 0 var(--space-12);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    /* Ensure dropdown list matches app theme */
+    .select-input option,
+    .select-input optgroup {
+      background: var(--panel);
+      color: var(--text-primary);
+    }
+
+    .select-input option:checked {
+      background: var(--panel-strong);
+      color: var(--text-primary);
+    }
+
+    .text-input:focus-visible,
+    .select-input:focus-visible {
+      box-shadow: var(--focus-ring);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .inline-actions {
+      display: flex;
+      gap: var(--space-8);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .mini-btn {
+      height: 34px;
+      padding: 0 var(--space-12);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--duration-quick) var(--easing);
+    }
+
+    .mini-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.16);
+      color: var(--text-primary);
+    }
+
+    .mini-btn.primary {
+      background: var(--accent);
+      color: #0c0e12;
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .mini-btn.danger {
+      background: rgba(255, 107, 107, 0.14);
+      border-color: rgba(255, 107, 107, 0.35);
+      color: rgba(255, 107, 107, 0.95);
+    }
+
+    .helper-text {
+      font-size: var(--font-size-xs);
+      color: var(--text-tertiary);
+      margin-top: -4px;
+    }
+
+    .status-line {
+      font-size: var(--font-size-xs);
+      color: var(--text-tertiary);
+      margin-top: var(--space-4);
+    }
+
+    .status-line.good { color: var(--success); }
+    .status-line.bad { color: var(--danger); }
+
+    .model-list {
+      margin-top: var(--space-12);
+      display: grid;
+      gap: var(--space-8);
+    }
+
+    .model-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-12) var(--space-16);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--duration-quick) var(--easing);
+    }
+
+    .model-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .model-item.active {
+      border-color: rgba(255, 255, 255, 0.22);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.10), inset 0 0 0 1px rgba(182, 179, 180, 0.28);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
     @media (max-width: 720px) {
       #root { grid-template-columns: 1fr; }
       .sidebar { display: none; }
@@ -498,7 +851,7 @@
 
         <nav class="nav" style="margin-top: var(--space-32);">
           <button id="nav-sessions" class="nav-btn active" type="button">
-            <span class="nav-icon" data-icon="chat"></span>
+            <span class="nav-icon" data-icon="session"></span>
             Sessions
           </button>
           <button id="nav-modes" class="nav-btn" type="button">
@@ -527,7 +880,7 @@
             <span class="nav-icon" data-icon="bug"></span>
             Report a bug
           </button>
-          <button id="quit-shade" class="footer-btn" type="button">
+          <button id="quit-shade" class="footer-btn danger" type="button">
             <span class="nav-icon" data-icon="power"></span>
             Quit Shade
           </button>
@@ -536,32 +889,111 @@
     </aside>
 
     <main class="main">
-      <div class="window-controls" aria-label="Window controls">
-        <button id="dashboard-minimize" class="control-btn" type="button" title="Minimize">
-          <span class="nav-icon" data-icon="minus"></span>
-        </button>
-        <button id="dashboard-close" class="control-btn close" type="button" title="Close">
-          <span class="nav-icon" data-icon="close"></span>
-        </button>
-      </div>
-
-      <div class="header" style="-webkit-app-region: drag; padding-top: 6px;">
-        <div>
-          <h1>All conversations</h1>
-          <p>View all your conversations</p>
-        </div>
-
-        <div class="header-actions" style="-webkit-app-region: no-drag;">
-          <button id="new-chat" class="primary-btn" type="button">New chat</button>
+      <div class="dashboard-titlebar" aria-hidden="true">
+        <div class="window-controls" aria-label="Window controls">
+          <button id="dashboard-minimize" class="control-btn" type="button" title="Minimize">
+            <span class="nav-icon" data-icon="minus"></span>
+          </button>
+          <button id="dashboard-close" class="control-btn close" type="button" title="Close">
+            <span class="nav-icon" data-icon="close"></span>
+          </button>
         </div>
       </div>
 
-      <div class="search">
-        <span class="search-icon" data-icon="search"></span>
-        <input id="search-input" type="text" placeholder="Search conversations" autocomplete="off" />
+      <!-- Sessions View -->
+      <div id="view-sessions" class="view-container">
+        <div class="header" style="padding-top: 6px;">
+          <div>
+            <h1>All conversations</h1>
+            <p>View all your conversations</p>
+          </div>
+        </div>
+
+        <div class="search">
+          <span class="search-icon" data-icon="search"></span>
+          <input id="search-input" type="text" placeholder="Search conversations" autocomplete="off" />
+        </div>
+
+        <div class="quick-actions">
+          <button id="new-chat" class="action-btn primary" type="button">
+            <span class="nav-icon" data-icon="newchat"></span>
+            New chat
+          </button>
+          <button id="saved-messages" class="action-btn" type="button">
+            <span class="nav-icon" data-icon="save"></span>
+            Saved
+          </button>
+        </div>
+
+        <div id="content" class="content" aria-label="Sessions"></div>
       </div>
 
-      <div id="content" class="content" aria-label="Sessions"></div>
+      <!-- Configuration View -->
+      <div id="view-configuration" class="view-container" style="display: none;">
+        <div class="header" style="padding-top: 6px;">
+          <div>
+            <h1>Configuration</h1>
+            <p>Manage providers, API keys, and models</p>
+          </div>
+        </div>
+
+        <div id="config-content" class="content" aria-label="Configuration"></div>
+      </div>
+
+      <!-- Shortcuts View -->
+      <div id="view-shortcuts" class="view-container" style="display: none;">
+        <div class="header" style="padding-top: 6px;">
+          <div>
+            <h1>Keyboard Shortcuts</h1>
+            <p>Master Shade with these shortcuts</p>
+          </div>
+        </div>
+
+        <div class="shortcuts-list">
+          <div class="shortcut-item">
+            <span class="shortcut-label">Toggle overlay visibility</span>
+            <div class="shortcut-keys">
+              <span class="key-badge">Ctrl</span>
+              <span style="color: var(--text-tertiary); align-self: center;">+</span>
+              <span class="key-badge">/</span>
+            </div>
+          </div>
+
+          <div class="shortcut-item">
+            <span class="shortcut-label">Start new chat (clear conversation)</span>
+            <div class="shortcut-keys">
+              <span class="key-badge">Ctrl</span>
+              <span style="color: var(--text-tertiary); align-self: center;">+</span>
+              <span class="key-badge">R</span>
+            </div>
+          </div>
+
+          <div class="shortcut-item">
+            <span class="shortcut-label">Collapse/expand overlay</span>
+            <div class="shortcut-keys">
+              <span class="key-badge">Ctrl</span>
+              <span style="color: var(--text-tertiary); align-self: center;">+</span>
+              <span class="key-badge">'</span>
+            </div>
+          </div>
+
+          <div class="shortcut-item">
+            <span class="shortcut-label">Quick send with screenshot</span>
+            <div class="shortcut-keys">
+              <span class="key-badge">Ctrl</span>
+              <span style="color: var(--text-tertiary); align-self: center;">+</span>
+              <span class="key-badge">Enter</span>
+            </div>
+          </div>
+
+          <div class="shortcut-item">
+            <span class="shortcut-label">Send message</span>
+            <div class="shortcut-keys">
+              <span class="key-badge">Enter</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 

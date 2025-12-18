@@ -133,20 +133,23 @@ function generateProviderSections() {
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="${providerId}-model">Model</label>
-        ${provider.models && Object.keys(provider.models).length > 0 ? `
-          <select id="${providerId}-model">
-            ${modelOptions}
-          </select>
-        ` : `
-          <input type="text" id="${providerId}-model" placeholder="Enter model name">
-        `}
-        <button class="btn-refresh-models" onclick="refreshProviderModels('${providerId}')" style="margin-top: 8px;">
-          <span class="refresh-icon">↻</span> Refresh Models
-        </button>
-        <div id="${providerId}-refresh-status" class="status-message" style="margin-top: 4px;"></div>
-      </div>
+       <div class="form-group">
+         <label for="${providerId}-model">Model</label>
+         ${provider.models && Object.keys(provider.models).length > 0 ? `
+           <select id="${providerId}-model">
+             ${modelOptions}
+           </select>
+         ` : `
+           <input type="text" id="${providerId}-model" placeholder="Enter model name">
+         `}
+         <div style="font-size: 11px; color: rgba(255, 255, 255, 0.5); margin-top: 6px;">
+           Note: Some models don't support screenshots and some models might not work with this application.
+         </div>
+         <button class="btn-refresh-models" onclick="refreshProviderModels('${providerId}')" style="margin-top: 8px;">
+           <span class="refresh-icon">↻</span> Refresh Models
+         </button>
+         <div id="${providerId}-refresh-status" class="status-message" style="margin-top: 4px;"></div>
+       </div>
 
       ${provider.baseUrl ? `
         <div class="form-group">
@@ -453,7 +456,7 @@ async function testProvider(provider) {
     // Validate API key (this will make a test request)
     const result = await window.electronAPI.validateApiKey(provider)
 
-    if (result.valid) {
+    if (result.isValid) {
       showStatus(`${provider}-status`, `✓ Connection successful! Using ${provider} API`, 'success')
     } else {
       showStatus(`${provider}-status`, `✗ Invalid API key: ${result.error || 'Authentication failed'}`, 'error')

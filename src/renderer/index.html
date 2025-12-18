@@ -167,7 +167,7 @@
     }
 
     .icon-btn:hover {
-      background: var(--panel-muted);
+      background: rgba(255, 255, 255, 0.08);
       color: var(--text-primary);
     }
 
@@ -193,6 +193,8 @@
       justify-content: center;
       padding: var(--space-16) var(--space-12);
       position: relative;
+      /* Match dashboard main (non-sidebar) surface */
+      background: rgba(18, 18, 18, 0.92);
     }
 
     .messages-container::-webkit-scrollbar {
@@ -369,18 +371,21 @@
     /* Input Area */
     .input-area {
       padding: var(--space-12);
-      border-top: 1px solid var(--border);
-      background: transparent;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(18, 18, 18, 0.92);
     }
 
     .input-container {
       display: flex;
       flex-direction: column;
       gap: var(--space-8);
-      background: var(--panel);
-      border: 1px solid var(--border);
+      /* Match dashboard sidebar surface */
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.10);
       border-radius: 20px;
       padding: var(--space-8) var(--space-12);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
     .input-row {
@@ -415,8 +420,8 @@
       flex-shrink: 0;
       width: 32px;
       height: 32px;
-      border: none;
-      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(0, 0, 0, 0.18);
       color: var(--text-tertiary);
       cursor: pointer;
       border-radius: var(--radius-sm);
@@ -425,15 +430,19 @@
       justify-content: center;
       transition: all var(--duration-quick) var(--easing);
       padding: 0;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
     .icon-btn-input:hover {
-      background: var(--panel-muted);
+      background: rgba(0, 0, 0, 0.28);
+      border-color: rgba(255, 255, 255, 0.16);
       color: var(--text-primary);
     }
 
     .icon-btn-input.active {
       background: var(--accent-muted);
+      border-color: rgba(182, 179, 180, 0.28);
       color: var(--accent-strong);
     }
 
@@ -441,6 +450,7 @@
     #send-btn {
       background: var(--accent);
       color: #0c0e12;
+      border: 1px solid rgba(255, 255, 255, 0.10);
       border-radius: var(--radius-md);
       width: 36px;
       height: 36px;
@@ -497,8 +507,8 @@
     .mode-select-input {
       flex-shrink: 0;
       padding: var(--space-4) var(--space-12);
-      background: var(--panel-muted);
-      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.10);
       border-radius: var(--radius-sm);
       color: var(--text-secondary);
       font-size: var(--font-size-sm);
@@ -506,11 +516,13 @@
       cursor: pointer;
       transition: all var(--duration-quick) var(--easing);
       outline: none;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
     .mode-select-input:hover {
-      background: var(--panel-strong);
-      border-color: var(--border-strong);
+      background: rgba(0, 0, 0, 0.28);
+      border-color: rgba(255, 255, 255, 0.16);
     }
 
     .mode-select-input:focus {
@@ -941,6 +953,9 @@
             >
               <option value="default">Default</option>
             </select>
+            <button id="new-chat-btn" class="icon-btn-input" title="New Chat (Ctrl+R)" aria-label="Start New Chat">
+              <!-- Icon loaded from custom-icons/newchat.svg -->
+            </button>
           </div>
         </div>
       </div>

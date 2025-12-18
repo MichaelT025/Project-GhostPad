@@ -47,6 +47,7 @@ Upload SVG icons to this directory. All icon files should be named exactly as sh
 
 ### Dashboard Navigation (Sidebar)
 - [x] `chat.svg` - Chat/Sessions icon
+- [x] `newchat.svg` - New Chat icon
 - [x] `robot.svg` - Modes icon
 - [x] `config.svg` - Configuration icon
 - [x] `keyboard.svg` - Shortcuts icon

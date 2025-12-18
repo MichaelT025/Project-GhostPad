@@ -4,14 +4,12 @@
  */
 class LLMProvider {
   /**
-   * @param {string} apiKey - API key for the provider
+   * @param {string} apiKey - API key for the provider (optional for local providers)
    * @param {Object} config - Provider-specific configuration (model, temperature, etc.)
    */
   constructor(apiKey, config = {}) {
-    if (!apiKey) {
-      throw new Error('API key is required')
-    }
-    this.apiKey = apiKey
+    // API key is optional for local providers (ollama, lm-studio, etc.)
+    this.apiKey = apiKey || ''
     this.config = config
   }
 

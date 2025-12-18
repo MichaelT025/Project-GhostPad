@@ -85,14 +85,43 @@ function createMainWindow() {
 // Create the dashboard window (replaces standalone settings)
 function createDashboardWindow() {
   // Don't create if already exists
-  if (settingsWindow) {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    if (settingsWindow.isMinimized()) {
+      settingsWindow.restore()
+    }
+    settingsWindow.show()
     settingsWindow.focus()
     return
   }
 
+  const { screen } = require('electron')
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { workArea } = primaryDisplay
+
+  const dashboardWidth = 980
+  const dashboardHeight = 720
+
+  // Keep dashboard clear of the right-edge overlay by default
+  const overlayWidth = 550
+  const overlayPaddingRight = 100
+  const gapBetweenWindows = 60
+
+  const overlayLeft = workArea.x + workArea.width - overlayWidth - overlayPaddingRight
+  let dashboardX = overlayLeft - gapBetweenWindows - dashboardWidth
+
+  // Clamp so the dashboard never goes off the left edge
+  const minMarginLeft = 24
+  if (dashboardX < workArea.x + minMarginLeft) {
+    dashboardX = workArea.x + minMarginLeft
+  }
+
+  const dashboardY = workArea.y + Math.max(40, Math.round((workArea.height - dashboardHeight) / 2))
+
   settingsWindow = new BrowserWindow({
-    width: 980,
-    height: 720,
+    width: dashboardWidth,
+    height: dashboardHeight,
+    x: dashboardX,
+    y: dashboardY,
     icon: path.join(__dirname, '../renderer/assets/icons/main_icon/favicon.ico'),
     modal: false,
     show: false,
@@ -224,6 +253,11 @@ ipcMain.handle('capture-screen', async () => {
   }
 })
 
+// Helper function to check if provider is local (doesn't require API key)
+function isLocalProvider(providerName) {
+  return providerName === 'ollama' || providerName === 'lm-studio'
+}
+
 ipcMain.handle('send-message', async (event, { text, imageBase64, conversationHistory, summary }) => {
   try {
     console.log('Message send requested:', text, { hasSummary: !!summary })
@@ -232,7 +266,8 @@ ipcMain.handle('send-message', async (event, { text, imageBase64, conversationHi
     const providerName = configService.getActiveProvider()
     const apiKey = configService.getApiKey(providerName)
 
-    if (!apiKey) {
+    // Only require API key for non-local providers
+    if (!isLocalProvider(providerName) && !apiKey) {
       return {
         success: false,
         error: `No API key configured for ${providerName}. Please add your API key in settings.`
@@ -309,7 +344,8 @@ ipcMain.handle('generate-summary', async (_event, messages) => {
     const providerName = configService.getActiveProvider()
     const apiKey = configService.getApiKey(providerName)
 
-    if (!apiKey) {
+    // Only require API key for non-local providers
+    if (!isLocalProvider(providerName) && !apiKey) {
       return {
         success: false,
         error: `No API key configured for ${providerName}`
@@ -442,18 +478,24 @@ ipcMain.handle('set-provider-config', async (_event, { provider, config }) => {
 ipcMain.handle('validate-api-key', async (_event, provider) => {
   try {
     const apiKey = configService.getApiKey(provider)
+
+    // Local providers don't require API key - skip validation
+    if (isLocalProvider(provider)) {
+      return { success: true, isValid: true }
+    }
+
     if (!apiKey) {
-      return { success: false, valid: false, error: 'No API key configured' }
+      return { success: false, isValid: false, error: 'No API key configured' }
     }
 
     const config = configService.getProviderConfig(provider)
     const providerInstance = LLMFactory.createProvider(provider, apiKey, config)
     const isValid = await providerInstance.validateApiKey()
 
-    return { success: true, valid: isValid }
+    return { success: true, isValid }
   } catch (error) {
     console.error('Failed to validate API key:', error)
-    return { success: false, valid: false, error: error.message }
+    return { success: false, isValid: false, error: error.message }
   }
 })
 
@@ -883,6 +925,83 @@ ipcMain.handle('delete-session', async (_event, id) => {
     console.error('Failed to delete session:', error)
     return { success: false, error: error.message }
   }
+})
+
+ipcMain.handle('rename-session', async (_event, { id, newTitle }) => {
+  try {
+    if (!sessionStorage) {
+      return { success: false, error: 'Session storage not initialized' }
+    }
+    await sessionStorage.renameSession(id, newTitle)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to rename session:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('toggle-session-saved', async (_event, id) => {
+  try {
+    if (!sessionStorage) {
+      return { success: false, error: 'Session storage not initialized' }
+    }
+    const result = await sessionStorage.toggleSessionSaved(id)
+    return { success: true, session: result }
+  } catch (error) {
+    console.error('Failed to toggle session saved:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('set-session-saved', async (_event, { id, isSaved }) => {
+  try {
+    if (!sessionStorage) {
+      return { success: false, error: 'Session storage not initialized' }
+    }
+    const result = await sessionStorage.setSessionSaved(id, isSaved)
+    return { success: true, session: result }
+  } catch (error) {
+    console.error('Failed to set session saved:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('show-session-context-menu', async (event, sessionId) => {
+  const { Menu, BrowserWindow } = require('electron')
+  
+  // Check if session is saved
+  let isSaved = false
+  if (sessionStorage) {
+    try {
+      const session = await sessionStorage.loadSession(sessionId)
+      isSaved = !!session?.isSaved
+    } catch (e) {
+      console.error('Error loading session for context menu:', e)
+    }
+  }
+
+  return new Promise((resolve) => {
+    const template = [
+      {
+        label: 'Rename',
+        click: () => {
+          event.sender.send('context-menu-command', { command: 'rename', sessionId })
+        }
+      },
+      { type: 'separator' },
+      {
+        label: isSaved ? 'Unsave' : 'Save',
+        click: () => {
+          event.sender.send('context-menu-command', { command: 'save', sessionId })
+        }
+      }
+    ]
+    const menu = Menu.buildFromTemplate(template)
+    // Find the window that sent the request to attach menu correctly
+    const win = BrowserWindow.fromWebContents(event.sender)
+    menu.popup({ window: win })
+    resolve()
+  })
 })
 
 ipcMain.handle('search-sessions', async (_event, query) => {

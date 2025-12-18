@@ -50,6 +50,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('toggle-collapse', () => callback())
   },
 
+  // Context menu commands
+  onContextMenuCommand: (callback) => {
+    ipcRenderer.on('context-menu-command', (_event, data) => callback(data))
+  },
+
   // Config management
   saveApiKey: (provider, apiKey) => ipcRenderer.invoke('save-api-key', { provider, apiKey }),
   getApiKey: (provider) => ipcRenderer.invoke('get-api-key', provider),
@@ -85,6 +90,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   quitApp: () => ipcRenderer.invoke('quit-app'),
   minimizeDashboard: () => ipcRenderer.invoke('dashboard-minimize'),
   closeDashboard: () => ipcRenderer.invoke('dashboard-close'),
+  showSessionContextMenu: (sessionId) => ipcRenderer.invoke('show-session-context-menu', sessionId),
 
   // Icon management
   loadCustomIcons: () => ipcRenderer.invoke('load-custom-icons'),
@@ -102,6 +108,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadSession: (id) => ipcRenderer.invoke('load-session', id),
   getAllSessions: () => ipcRenderer.invoke('get-all-sessions'),
   deleteSession: (id) => ipcRenderer.invoke('delete-session', id),
+  renameSession: (id, newTitle) => ipcRenderer.invoke('rename-session', { id, newTitle }),
+  toggleSessionSaved: (id) => ipcRenderer.invoke('toggle-session-saved', id),
+  setSessionSaved: (id, isSaved) => ipcRenderer.invoke('set-session-saved', { id, isSaved }),
   searchSessions: (query) => ipcRenderer.invoke('search-sessions', query),
 
   // Cleanup listeners

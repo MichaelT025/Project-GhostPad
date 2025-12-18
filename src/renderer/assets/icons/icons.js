@@ -49,6 +49,7 @@ export const REQUIRED_ICONS = {
 
   // Dashboard Navigation
   'chat': 'Sessions Icon',
+  'newchat': 'New Chat Icon',
   'robot': 'Modes Icon',
   'config': 'Configuration Icon',
   'keyboard': 'Shortcuts Icon',
@@ -58,6 +59,7 @@ export const REQUIRED_ICONS = {
   // Dashboard UI
   'search': 'Search Icon',
   'trash': 'Delete Icon',
+  'save': 'Save Icon',
   'github': 'GitHub Icon',
   'x': 'X Icon',
   'website': 'Website Icon',

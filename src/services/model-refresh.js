@@ -252,14 +252,12 @@ class ModelRefreshService {
 
       const models = {}
       if (data.models && Array.isArray(data.models)) {
-        // Filter for vision-capable models (llava, bakllava, llama3.2-vision, etc.)
-        data.models
-          .filter(m => this.isOllamaVisionModel(m.name))
-          .forEach(model => {
-            models[model.name] = {
-              name: this.formatModelName(model.name)
-            }
-          })
+        // Show all local models (no vision filtering for local providers)
+        data.models.forEach(model => {
+          models[model.name] = {
+            name: this.formatModelName(model.name)
+          }
+        })
       }
 
       return models

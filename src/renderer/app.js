@@ -29,6 +29,7 @@ const closeBtn = document.getElementById('close-btn')
 const hideBtn = document.getElementById('hide-btn')
 const collapseBtn = document.getElementById('collapse-btn')
 const modeDropdownInput = document.getElementById('mode-dropdown-input')
+const newChatBtn = document.getElementById('new-chat-btn')
 const displayBtn = document.getElementById('display-btn')
 const scrollBottomBtn = document.getElementById('scroll-bottom-btn')
 
@@ -280,6 +281,9 @@ async function init() {
   // Mode dropdown - switch active mode
   modeDropdownInput.addEventListener('change', handleModeSwitch)
 
+  // New Chat button
+  newChatBtn.addEventListener('click', handleNewChat)
+
   // Ctrl+R new chat handler
   window.electronAPI.onNewChat(handleNewChat)
 
@@ -307,11 +311,12 @@ async function init() {
   await initIcons()
 
    // Insert icons into UI elements
-   insertIcon(homeBtn, 'settings', 'icon-svg')
+   insertIcon(homeBtn, 'home', 'icon-svg')
    insertIcon(displayBtn, 'display', 'icon-svg')
    insertIcon(closeBtn, 'close', 'icon-svg')
    insertIcon(hideBtn, 'minus', 'icon-svg')
    insertIcon(collapseBtn, 'collapse', 'icon-svg')
+   insertIcon(newChatBtn, 'newchat', 'icon-svg')
    insertIcon(screenshotBtn, 'camera', 'icon-svg')
    insertIcon(sendBtn, 'send', 'icon-svg')
    insertIcon(scrollBottomBtn, 'arrow-down', 'icon-svg')

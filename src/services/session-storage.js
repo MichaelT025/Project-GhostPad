@@ -108,6 +108,7 @@ class SessionStorage {
       updatedAt,
       provider: safeText(session?.provider),
       model: safeText(session?.model),
+      isSaved: !!session?.isSaved,
       messages
     }
 
@@ -120,6 +121,7 @@ class SessionStorage {
       updatedAt: normalizedSession.updatedAt,
       provider: normalizedSession.provider,
       model: normalizedSession.model,
+      isSaved: normalizedSession.isSaved,
       messageCount: normalizedSession.messages.length
     }
   }
@@ -144,6 +146,7 @@ class SessionStorage {
       updatedAt: normalizeIsoTimestamp(session.updatedAt),
       provider: safeText(session.provider),
       model: safeText(session.model),
+      isSaved: !!session.isSaved,
       messages: Array.isArray(session.messages) ? session.messages.map(normalizeSessionMessage) : []
     }
   }
@@ -171,10 +174,11 @@ class SessionStorage {
 
         const provider = safeText(session.provider)
         const model = safeText(session.model)
+        const isSaved = !!session.isSaved
 
         const messageCount = Array.isArray(session.messages) ? session.messages.length : 0
 
-        sessions.push({ id, title, createdAt, updatedAt, provider, model, messageCount })
+        sessions.push({ id, title, createdAt, updatedAt, provider, model, isSaved, messageCount })
       } catch (error) {
         // Skip corrupt session file.
         console.error('Failed to read session file:', file, error)
@@ -196,6 +200,36 @@ class SessionStorage {
     const filePath = this.sessionPathForId(id)
     await fs.rm(filePath, { force: true })
     return true
+  }
+
+  async renameSession(id, newTitle) {
+    // Load session to verify existence and get content
+    const session = await this.loadSession(id)
+    if (!session) {
+      throw new Error('Session not found')
+    }
+
+    // Update title
+    session.title = safeText(newTitle).trim() || 'New Chat'
+    
+    // Save updated session
+    return this.saveSession(session)
+  }
+
+  async toggleSessionSaved(id) {
+    const session = await this.loadSession(id)
+    if (!session) throw new Error('Session not found')
+
+    session.isSaved = !session.isSaved
+    return this.saveSession(session)
+  }
+
+  async setSessionSaved(id, isSaved) {
+    const session = await this.loadSession(id)
+    if (!session) throw new Error('Session not found')
+    
+    session.isSaved = !!isSaved
+    return this.saveSession(session)
   }
 
   async searchSessions(query) {
