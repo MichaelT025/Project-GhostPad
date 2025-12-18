@@ -21,9 +21,10 @@ A Windows desktop application providing real-time AI assistance through a transl
 - **Always-on-top translucent overlay** - Floats above all windows, always accessible
 - **Collapsible interface** - Minimal input bar by default, expands when you need it
 - **Screen capture** - Overlay automatically excluded from screenshots
-- **Multi-provider support** - Gemini, OpenAI, Anthropic, or OpenAI-compatible local models
+- **Multi-provider support** - Gemini, OpenAI, Anthropic, plus OpenAI-compatible endpoints (Ollama / LM Studio)
 - **Rich responses** - Markdown, LaTeX math, and syntax highlighting for 50+ languages
-- **Session history** - Resume previous conversations (stored locally for 30 days)
+- **Session history dashboard** - Browse, search, rename, save, and resume conversations (stored locally)
+- **In-app configuration** - Provider, API key validation, model selection, and screenshot/memory toggles
 - **Keyboard shortcuts** - Toggle visibility, start new chat, collapse/expand
 
 ## Installation
@@ -51,14 +52,14 @@ npm install
 npm start
 ```
 
-> **Note:** Run from Windows Command Prompt or PowerShell (not Cygwin/Git Bash).
+
 
 ### First-Time Setup
 
-1. Open Shade - you'll see a minimal input bar
-2. Click the settings icon
-3. Add your API key for your preferred provider
-4. Select your model
+1. Open Shade — you’ll see a minimal input bar
+2. Open the Dashboard (Configuration tab)
+3. Choose your provider and paste your API key (it auto-tests/validates)
+4. Select your default model
 5. Start chatting!
 
 ## Usage
@@ -75,7 +76,7 @@ npm start
 
 1. **See something on screen you have a question about?**
 2. **Press `Ctrl+/`** to show Shade
-3. **Click "Use Screen"** to capture a screenshot (or enable auto-capture in settings)
+3. **Click Image button to capture a screenshot (or enable auto-capture in settings)
 4. **Type your question** and press Enter
 5. **Get AI-powered answers** with full context of what's on your screen
 
@@ -84,7 +85,7 @@ npm start
 - Drag the title bar to reposition
 - Resize by dragging edges (when expanded)
 - Screenshots persist until you start a new chat
-- Use `/models` in the input to quickly switch models
+- Use the Dashboard to manage sessions and configuration
 
 ## Technology
 
@@ -134,15 +135,15 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, testing/build commands, 
 - [x] Multi-provider LLM support
 - [x] Screen capture with overlay exclusion
 - [x] Rich text rendering (Markdown, LaTeX, code)
-- [ ] Collapsible overlay
-- [ ] Session history
-- [ ] Local model support
-- [ ] Model switcher
+- [x] Collapsible overlay
+- [x] Session history dashboard
+- [x] OpenAI-compatible local endpoints (Ollama / LM Studio)
+- [x] Automatic screenshot mode
+- [ ] Model switcher (`/models`)
 
 ### V1.1
 - [ ] macOS support
 - [ ] Linux support
-- [ ] Automatic screenshot mode
 - [ ] Usage/cost tracking
 - [ ] File attachments
 ### V2.0+
@@ -156,8 +157,6 @@ See [PRD.md](docs/PRD.md) for the complete product roadmap.
 ### Overlay appears in screenshots
 You need Windows 10 version 2004 (May 2020) or later. Update Windows if on an older version.
 
-### App won't start from Git Bash
-Electron doesn't work in Cygwin terminals. Use Command Prompt or PowerShell.
 
 ### API key not saving
 Check write permissions in your user data directory.
@@ -171,6 +170,11 @@ MIT License - see [LICENSE](LICENSE) for details.
 - Built with [Electron](https://www.electronjs.org/)
 - LLM Providers: [Google Gemini](https://deepmind.google/technologies/gemini/), [OpenAI](https://openai.com/), [Anthropic](https://www.anthropic.com/)
 - Image processing: [Sharp](https://sharp.pixelplumbing.com/)
+
+### Inspiration
+
+- [Cluely](https://cluely.com/)
+- [Pluely](https://pluely.com/)
 
 ---
 
