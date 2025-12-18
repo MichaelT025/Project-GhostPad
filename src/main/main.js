@@ -8,10 +8,26 @@ const SessionStorage = require('../services/session-storage')
 
 let mainWindow = null
 let settingsWindow = null
+let modelSwitcherWindow = null
 let configService = null
 let sessionStorage = null
 let overlayExpandedBounds = null
 let overlayIsCollapsed = false
+
+// Global state for current message request to allow interruption
+let currentAbortController = null
+
+function sendToWindows(channel, ...args) {
+  ;[mainWindow, settingsWindow, modelSwitcherWindow].forEach((win) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send(channel, ...args)
+    }
+  })
+}
+
+function broadcastConfigChanged() {
+  sendToWindows('config-changed')
+}
 
 // Create the main overlay window
 function createMainWindow() {
@@ -65,15 +81,17 @@ function createMainWindow() {
     overlayExpandedBounds = mainWindow.getBounds()
   })
 
-  // If user drags window while collapsed, keep the new position for restore
+  // Track position changes so expand() restores the latest location.
+  // - When expanded: keep full bounds in sync with user moves.
+  // - When collapsed: only update x/y so we preserve the remembered expanded size.
   mainWindow.on('move', () => {
-    if (!mainWindow || !overlayIsCollapsed || !overlayExpandedBounds) return
+    if (!mainWindow || !overlayExpandedBounds) return
+
     const currentBounds = mainWindow.getBounds()
-    overlayExpandedBounds = {
-      ...overlayExpandedBounds,
-      x: currentBounds.x,
-      y: currentBounds.y
-    }
+
+    overlayExpandedBounds = overlayIsCollapsed
+      ? { ...overlayExpandedBounds, x: currentBounds.x, y: currentBounds.y }
+      : currentBounds
   })
 
   // Handle window closed
@@ -150,6 +168,84 @@ function createDashboardWindow() {
   })
 }
 
+function createModelSwitcherWindow() {
+  // Don't create if already exists
+  if (modelSwitcherWindow && !modelSwitcherWindow.isDestroyed()) {
+    if (modelSwitcherWindow.isMinimized()) {
+      modelSwitcherWindow.restore()
+    }
+    modelSwitcherWindow.show()
+    modelSwitcherWindow.focus()
+    return
+  }
+
+  const { screen } = require('electron')
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { workArea } = primaryDisplay
+
+  const width = 520
+  const height = 640
+
+  let x = workArea.x + Math.round((workArea.width - width) / 2)
+  let y = workArea.y + Math.round((workArea.height - height) / 3)
+
+  // Position near the overlay if available.
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const overlayBounds = mainWindow.getBounds()
+    const gap = 16
+
+    const leftCandidate = overlayBounds.x - gap - width
+    const rightCandidate = overlayBounds.x + overlayBounds.width + gap
+
+    if (leftCandidate >= workArea.x + 12) {
+      x = leftCandidate
+      y = Math.max(workArea.y + 12, Math.min(overlayBounds.y, workArea.y + workArea.height - height - 12))
+    } else if (rightCandidate + width <= workArea.x + workArea.width - 12) {
+      x = rightCandidate
+      y = Math.max(workArea.y + 12, Math.min(overlayBounds.y, workArea.y + workArea.height - height - 12))
+    }
+  }
+
+  modelSwitcherWindow = new BrowserWindow({
+    width,
+    height,
+    x,
+    y,
+    icon: path.join(__dirname, '../renderer/assets/icons/main_icon/favicon.ico'),
+    modal: false,
+    show: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  })
+
+  modelSwitcherWindow.loadFile(path.join(__dirname, '../renderer/model-switcher.html'))
+
+  modelSwitcherWindow.once('ready-to-show', () => {
+    modelSwitcherWindow.show()
+    modelSwitcherWindow.focus()
+  })
+
+  // Close when user clicks elsewhere.
+  modelSwitcherWindow.on('blur', () => {
+    if (modelSwitcherWindow && !modelSwitcherWindow.isDestroyed()) {
+      modelSwitcherWindow.close()
+    }
+  })
+
+  modelSwitcherWindow.on('closed', () => {
+    modelSwitcherWindow = null
+  })
+}
+
 // Register global hotkeys
 function registerHotkeys() {
   // Ctrl+/ to toggle window visibility (minimize to taskbar)
@@ -183,6 +279,11 @@ function registerHotkeys() {
     if (mainWindow) {
       mainWindow.webContents.send('capture-screenshot')
     }
+  })
+
+  // Ctrl+M to open model switcher
+  globalShortcut.register('CommandOrControl+M', () => {
+    createModelSwitcherWindow()
   })
 }
 
@@ -303,6 +404,12 @@ ipcMain.handle('send-message', async (event, { text, imageBase64, conversationHi
   try {
     console.log('Message send requested:', text, { hasSummary: !!summary })
 
+    // Cancel any existing request
+    if (currentAbortController) {
+      currentAbortController.abort()
+    }
+    currentAbortController = new AbortController()
+
     // Get active provider from Configuration (default)
     let providerName = configService.getActiveProvider()
 
@@ -366,7 +473,7 @@ ipcMain.handle('send-message', async (event, { text, imageBase64, conversationHi
     // Stream response chunks to renderer
     await provider.streamResponse(promptWithSummary, imageBase64, historyWithSummary, (chunk) => {
       event.sender.send('message-chunk', chunk)
-    })
+    }, currentAbortController.signal)
 
     // Signal completion
     event.sender.send('message-complete')
@@ -378,6 +485,10 @@ ipcMain.handle('send-message', async (event, { text, imageBase64, conversationHi
       provider: providerName
     }
   } catch (error) {
+    if (error.name === 'AbortError' || error.message?.includes('abort')) {
+      console.log('Request aborted by user')
+      return { success: true, aborted: true }
+    }
     console.error('Failed to send message:', error)
 
     // Send error to renderer
@@ -387,7 +498,19 @@ ipcMain.handle('send-message', async (event, { text, imageBase64, conversationHi
       success: false,
       error: error.message
     }
+  } finally {
+    currentAbortController = null
   }
+})
+
+ipcMain.handle('stop-message', async () => {
+  if (currentAbortController) {
+    currentAbortController.abort()
+    currentAbortController = null
+    console.log('User requested to stop message generation')
+    return { success: true }
+  }
+  return { success: false }
 })
 
 // Generate conversation summary
@@ -540,10 +663,7 @@ ipcMain.handle('set-active-provider', async (_event, provider) => {
     configService.setActiveProvider(provider)
     console.log(`Active provider set to: ${provider}`)
 
-    // Notify main window that config changed
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('config-changed')
-    }
+    broadcastConfigChanged()
 
     return { success: true }
   } catch (error) {
@@ -577,10 +697,22 @@ ipcMain.handle('set-provider-config', async (_event, { provider, config }) => {
     configService.setProviderConfig(provider, config)
     console.log(`Provider config saved for: ${provider}`)
 
-    // Notify main window that config changed
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('config-changed')
+    // Keep active-mode override in sync: last change wins.
+    try {
+      const activeModeId = configService.getActiveMode()
+      const activeMode = configService.getMode(activeModeId)
+      if (activeMode?.overrideProviderModel) {
+        configService.saveMode({
+          ...activeMode,
+          provider,
+          model: config?.model || ''
+        })
+      }
+    } catch (e) {
+      console.warn('Failed to sync active mode with provider config:', e?.message || e)
     }
+
+    broadcastConfigChanged()
 
     return { success: true }
   } catch (error) {
@@ -678,10 +810,22 @@ ipcMain.handle('save-mode', async (_event, mode) => {
     configService.saveMode(mode)
     console.log(`Mode saved: ${mode.name}`)
 
-    // Notify main window that config changed
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('config-changed')
+    // If the active mode overrides provider/model, it wins.
+    try {
+      const activeModeId = configService.getActiveMode()
+      if (mode?.id === activeModeId && mode?.overrideProviderModel && mode?.provider) {
+        configService.setActiveProvider(mode.provider)
+
+        const existing = configService.getProviderConfig(mode.provider)
+        const next = { ...existing }
+        if (mode.model) next.model = mode.model
+        configService.setProviderConfig(mode.provider, next)
+      }
+    } catch (e) {
+      console.warn('Failed to sync provider config from mode override:', e?.message || e)
     }
+
+    broadcastConfigChanged()
 
     return { success: true }
   } catch (error) {
@@ -695,10 +839,7 @@ ipcMain.handle('delete-mode', async (_event, modeId) => {
     configService.deleteMode(modeId)
     console.log(`Mode deleted: ${modeId}`)
 
-    // Notify main window that config changed
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('config-changed')
-    }
+    broadcastConfigChanged()
 
     return { success: true }
   } catch (error) {
@@ -748,11 +889,23 @@ ipcMain.handle('set-active-mode', async (_event, modeId) => {
     configService.setActiveMode(modeId)
     console.log(`Active mode set to: ${modeId}`)
 
-    // Notify overlay if it exists
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('active-mode-changed', modeId)
-      mainWindow.webContents.send('config-changed')
+    // If the mode overrides provider/model, it becomes the global selection.
+    try {
+      const mode = configService.getMode(modeId)
+      if (mode?.overrideProviderModel && mode?.provider) {
+        configService.setActiveProvider(mode.provider)
+
+        const existing = configService.getProviderConfig(mode.provider)
+        const next = { ...existing }
+        if (mode.model) next.model = mode.model
+        configService.setProviderConfig(mode.provider, next)
+      }
+    } catch (e) {
+      console.warn('Failed to sync provider/model from active mode:', e?.message || e)
     }
+
+    sendToWindows('active-mode-changed', modeId)
+    broadcastConfigChanged()
 
     return { success: true }
   } catch (error) {
@@ -768,6 +921,28 @@ ipcMain.handle('open-settings', async () => {
     return { success: true }
   } catch (error) {
     console.error('Failed to open dashboard:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('open-model-switcher', async () => {
+  try {
+    createModelSwitcherWindow()
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to open model switcher:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('close-model-switcher', async () => {
+  try {
+    if (modelSwitcherWindow && !modelSwitcherWindow.isDestroyed()) {
+      modelSwitcherWindow.close()
+    }
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to close model switcher:', error)
     return { success: false, error: error.message }
   }
 })

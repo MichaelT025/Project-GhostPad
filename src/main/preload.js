@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // LLM messaging
   sendMessage: (text, imageBase64, conversationHistory, summary) => ipcRenderer.invoke('send-message', { text, imageBase64, conversationHistory, summary }),
+  stopMessage: () => ipcRenderer.invoke('stop-message'),
   generateSummary: (messages) => ipcRenderer.invoke('generate-summary', messages),
 
   // Listen for streaming message chunks
@@ -107,6 +108,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Window management
   openSettings: () => ipcRenderer.invoke('open-settings'),
+  openModelSwitcher: () => ipcRenderer.invoke('open-model-switcher'),
+  closeModelSwitcher: () => ipcRenderer.invoke('close-model-switcher'),
   hideWindow: () => ipcRenderer.invoke('hide-window'),
   setCollapsed: (collapsed, height) => ipcRenderer.send('set-collapsed', { collapsed, height }),
   focusOverlay: () => ipcRenderer.invoke('focus-overlay'),

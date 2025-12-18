@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Select model</title>
+
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/typography.css" />
+  <link rel="stylesheet" href="styles/icons.css" />
+  <link rel="stylesheet" href="styles/components.css" />
+
+  <!-- Typography - Space Grotesk Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-family);
+      background: transparent;
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+
+    #root {
+      width: 100%;
+      height: 100vh;
+      background: rgba(18, 18, 18, 0.92);
+      backdrop-filter: var(--blur-overlay);
+      -webkit-backdrop-filter: var(--blur-overlay);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-overlay);
+    }
+
+    .title-bar {
+      height: var(--title-bar-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-16);
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      -webkit-app-region: drag;
+      flex-shrink: 0;
+    }
+
+    .title-text {
+      font-size: var(--font-size-base);
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      color: var(--text-primary);
+    }
+
+    .title-bar-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-8);
+      -webkit-app-region: no-drag;
+    }
+
+    .meta {
+      padding: var(--space-12) var(--space-16);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .provider-info {
+      font-size: var(--font-size-xs);
+      color: var(--text-tertiary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .note {
+      font-size: var(--font-size-xs);
+      color: var(--text-tertiary);
+      line-height: 1.4;
+    }
+
+    .note.warn {
+      color: var(--warning);
+    }
+
+    .search-container {
+      padding: var(--space-12) var(--space-16) var(--space-4);
+    }
+
+    .search-input {
+      width: 100%;
+      height: 40px;
+      padding: 0 var(--space-12);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--text-primary);
+      outline: none;
+      font-family: var(--font-family);
+      font-size: var(--font-size-sm);
+      transition: all var(--duration-quick) var(--easing);
+    }
+
+    .search-input:focus {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.25);
+      box-shadow: var(--focus-ring);
+    }
+
+    .list-container {
+      flex: 1;
+      min-height: 0;
+      padding: 0 var(--space-16) var(--space-16);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .model-list {
+      flex: 1;
+      margin-top: var(--space-8);
+      max-height: none; /* Let it fill the container */
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+
+    .model-item {
+      margin-bottom: 2px;
+    }
+
+    .model-item.highlighted {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .model-item.active.highlighted {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--accent);
+    }
+
+    .item-id {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge-active {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: var(--accent);
+      color: #0c0e12;
+      flex-shrink: 0;
+    }
+
+    .footer {
+      padding: var(--space-12) var(--space-16);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.2);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .status {
+      font-size: var(--font-size-xs);
+      color: var(--text-tertiary);
+      font-weight: 500;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      transition: all var(--duration-quick) var(--easing);
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .nav-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .close-btn:hover {
+      background: var(--danger);
+      color: white;
+    }
+
+    .action-btn {
+      height: 32px;
+      padding: 0 var(--space-12);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--duration-quick) var(--easing);
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="title-bar">
+      <span class="title-text">Select Model</span>
+      <div class="title-bar-right">
+        <button id="refresh" class="icon-btn" title="Refresh models">
+          <span class="nav-icon" data-icon="refresh"></span>
+        </button>
+        <button id="close" class="icon-btn close-btn" title="Close">
+          <span class="nav-icon" data-icon="close"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="meta">
+      <div id="provider-line" class="provider-info"></div>
+      <div id="mode-note" class="note" style="display:none;"></div>
+      <div id="key-note" class="note warn" style="display:none;"></div>
+    </div>
+
+    <div class="search-container">
+      <input id="search" class="search-input" type="text" placeholder="Search models..." autocomplete="off" />
+    </div>
+
+    <div class="list-container">
+      <div id="list" class="model-list" role="listbox" aria-label="Model list"></div>
+    </div>
+
+    <div class="footer">
+      <div class="text-tertiary text-xs">Esc to close</div>
+      <div id="status" class="status"></div>
+      <div class="text-tertiary text-xs">Enter to select</div>
+    </div>
+  </div>
+
+  <script type="module" src="model-switcher.js"></script>
+</body>
+</html>

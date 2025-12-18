@@ -545,51 +545,6 @@
       justify-content: flex-end;
     }
 
-    .rename-btn,
-    .delete-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 34px;
-      height: 34px;
-      border-radius: var(--radius-md);
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--text-tertiary);
-      cursor: pointer;
-      transition: all var(--duration-quick) var(--easing);
-      opacity: 0; /* Hidden by default */
-      user-select: none;
-      padding: 0;
-    }
-
-    .rename-btn svg,
-    .delete-btn svg {
-      width: 16px;
-      height: 16px;
-      fill: currentColor;
-    }
-
-    .session-card:hover .rename-btn {
-      opacity: 1;
-      background: rgba(255, 255, 255, 0.06);
-      border-color: rgba(255, 255, 255, 0.12);
-      color: var(--text-primary);
-    }
-
-    .session-card:hover .rename-btn:hover {
-      background: rgba(255, 255, 255, 0.10);
-      border-color: rgba(255, 255, 255, 0.18);
-    }
-
-    .session-card:hover .delete-btn {
-      opacity: 1;
-      background: var(--danger);
-      border-color: rgba(0, 0, 0, 0.2);
-      color: white;
-      box-shadow: var(--shadow-elev-2);
-    }
-
     .session-card:hover .timestamp {
       display: none; /* Make room for actions */
     }
@@ -903,12 +858,14 @@
       flex-shrink: 0;
     }
 
-    .mode-item .icon-mini {
+    .mode-item .icon-mini,
+    .session-card .icon-mini {
       opacity: 0;
       transition: opacity var(--duration-quick) var(--easing);
     }
 
-    .mode-item:hover .icon-mini {
+    .mode-item:hover .icon-mini,
+    .session-card:hover .icon-mini {
       opacity: 1;
     }
 
@@ -1343,6 +1300,15 @@
           </div>
 
           <div class="shortcut-item">
+            <span class="shortcut-label">Open model switcher</span>
+            <div class="shortcut-keys">
+              <span class="key-badge">Ctrl</span>
+              <span style="color: var(--text-tertiary); align-self: center;">+</span>
+              <span class="key-badge">M</span>
+            </div>
+          </div>
+
+          <div class="shortcut-item">
             <span class="shortcut-label">Quick send with screenshot</span>
             <div class="shortcut-keys">
               <span class="key-badge">Ctrl</span>
@@ -1413,7 +1379,7 @@
         </div>
         <h2 style="margin: 0;">Reset Prompt?</h2>
       </div>
-      <p>This will revert the system prompt for this mode to its original factory setting. Your provider and model selections will not be changed.</p>
+      <p>This will reset the system prompt. Default modes revert to their factory prompt; custom modes will be cleared. Your provider and model selections will not be changed.</p>
       <div class="modal-actions">
         <button id="reset-prompt-cancel" class="mini-btn" type="button">Cancel</button>
         <button id="reset-prompt-confirm" class="mini-btn danger" type="button" style="background: var(--danger); color: white; border: none; font-weight: 600;">Reset Prompt</button>

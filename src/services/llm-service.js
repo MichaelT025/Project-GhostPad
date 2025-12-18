@@ -27,10 +27,12 @@ class LLMProvider {
    * Stream a response from the LLM with optional image
    * @param {string} text - The text message to send
    * @param {string|null} imageBase64 - Optional base64-encoded image
+   * @param {Array} conversationHistory - Array of previous messages [{type: 'user'/'ai', text: string}]
    * @param {Function} onChunk - Callback function for each chunk of response
+   * @param {AbortSignal|null} signal - Optional abort signal to interrupt the request
    * @returns {Promise<void>}
    */
-  async streamResponse(text, imageBase64 = null, onChunk) {
+  async streamResponse(text, imageBase64 = null, conversationHistory = [], onChunk, signal = null) {
     throw new Error('streamResponse() must be implemented by provider')
   }
 

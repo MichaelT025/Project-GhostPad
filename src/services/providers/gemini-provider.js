@@ -57,9 +57,10 @@ class GeminiProvider extends LLMProvider {
    * @param {string|null} imageBase64 - Optional base64-encoded image
    * @param {Array} conversationHistory - Array of previous messages [{type: 'user'/'ai', text: string}]
    * @param {Function} onChunk - Callback function for each chunk of response
+   * @param {AbortSignal|null} signal - Optional abort signal
    * @returns {Promise<void>}
    */
-  async streamResponse(text, imageBase64 = null, conversationHistory = [], onChunk) {
+  async streamResponse(text, imageBase64 = null, conversationHistory = [], onChunk, signal = null) {
     try {
       const contents = []
 
@@ -94,16 +95,25 @@ class GeminiProvider extends LLMProvider {
         parts
       })
 
+      // Note: Gemini SDK doesn't natively support AbortSignal in generateContentStream yet in some versions,
+      // but we can wrap it or hope the fetch-based ones do.
+      // For now we'll pass it if possible, or manually check it.
       const result = await this.model.generateContentStream({ contents })
 
       // Stream the response chunks
       for await (const chunk of result.stream) {
+        if (signal?.aborted) {
+          break;
+        }
         const chunkText = chunk.text()
         if (chunkText) {
           onChunk(chunkText)
         }
       }
     } catch (error) {
+      if (error.name === 'AbortError' || error.message?.includes('abort')) {
+        return; // Request was aborted
+      }
       throw new Error(`Gemini streaming error: ${error.message}`)
     }
   }

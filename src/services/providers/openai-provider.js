@@ -73,9 +73,10 @@ class OpenAIProvider extends LLMProvider {
    * @param {string|null} imageBase64 - Optional base64-encoded image
    * @param {Array} conversationHistory - Array of previous messages [{type: 'user'/'ai', text: string}]
    * @param {Function} onChunk - Callback function for each chunk of response
+   * @param {AbortSignal|null} signal - Optional abort signal
    * @returns {Promise<void>}
    */
-  async streamResponse(text, imageBase64 = null, conversationHistory = [], onChunk) {
+  async streamResponse(text, imageBase64 = null, conversationHistory = [], onChunk, signal = null) {
     try {
       const messages = []
 
@@ -128,7 +129,7 @@ class OpenAIProvider extends LLMProvider {
         messages: messages,
         max_completion_tokens: 4096,
         stream: true
-      })
+      }, { signal })
 
       // Stream the response chunks
       for await (const chunk of stream) {
@@ -138,6 +139,9 @@ class OpenAIProvider extends LLMProvider {
         }
       }
     } catch (error) {
+      if (error.name === 'AbortError' || error.message?.includes('abort')) {
+        return; // Request was aborted, ignore error
+      }
       throw new Error(`OpenAI streaming error: ${error.message}`)
     }
   }

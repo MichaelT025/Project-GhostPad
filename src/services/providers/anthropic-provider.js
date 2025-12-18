@@ -69,9 +69,10 @@ class AnthropicProvider extends LLMProvider {
    * @param {string|null} imageBase64 - Optional base64-encoded image
    * @param {Array} conversationHistory - Array of previous messages [{type: 'user'/'ai', text: string}]
    * @param {Function} onChunk - Callback function for each chunk of response
+   * @param {AbortSignal|null} signal - Optional abort signal
    * @returns {Promise<void>}
    */
-  async streamResponse(text, imageBase64 = null, conversationHistory = [], onChunk) {
+  async streamResponse(text, imageBase64 = null, conversationHistory = [], onChunk, signal = null) {
     try {
       const messages = []
 
@@ -123,7 +124,7 @@ class AnthropicProvider extends LLMProvider {
         requestParams.system = this.systemPrompt
       }
 
-      const stream = await this.client.messages.create(requestParams)
+      const stream = await this.client.messages.create(requestParams, { signal })
 
       // Stream the response chunks
       for await (const messageStreamEvent of stream) {
@@ -135,6 +136,9 @@ class AnthropicProvider extends LLMProvider {
         }
       }
     } catch (error) {
+      if (error.name === 'AbortError' || error.message?.includes('abort')) {
+        return; // Request was aborted
+      }
       throw new Error(`Anthropic streaming error: ${error.message}`)
     }
   }

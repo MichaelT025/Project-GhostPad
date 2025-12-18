@@ -14,6 +14,7 @@ let memoryManager = null // Memory manager instance (for context optimization)
 let capturedScreenshot = null // Current screenshot base64
 let capturedThumbnail = null // Screenshot thumbnail for preview
 let isScreenshotActive = false // Screenshot button state
+let isGenerating = false // Whether LLM is currently generating
 let currentStreamingMessageId = null // ID of currently streaming message
 let currentLoadingId = null // ID of current loading indicator
 let accumulatedText = '' // Accumulated text during streaming
@@ -610,16 +611,6 @@ function showScreenshotChip(thumbnailBase64) {
   if (existingChip) {
     existingChip.remove()
   }
-  
-  // Create and insert new chip
-  // const chip = createScreenshotChip(thumbnailBase64)
-  // const inputArea = document.querySelector('.input-area')
-  // const inputContainer = document.querySelector('.input-container')
-  // inputArea.insertBefore(chip, inputContainer)
-  
-  // Add remove button handler
-  // const removeBtn = document.getElementById('screenshot-remove')
-  // removeBtn.addEventListener('click', removeScreenshot)
 }
 
 /**
@@ -658,10 +649,27 @@ function removeScreenshot() {
   console.log('Screenshot removed')
 }
 
+function resetSendButton() {
+  isGenerating = false
+  sendBtn.disabled = false
+  sendBtn.title = 'Send'
+  sendBtn.setAttribute('aria-label', 'Send message')
+  insertIcon(sendBtn, 'send')
+  messageInput.disabled = false
+  messageInput.focus()
+}
+
 /**
  * Handle sending a message
  */
 async function handleSendMessage() {
+  // If already generating, stop it
+  if (isGenerating) {
+    await window.electronAPI.stopMessage()
+    resetSendButton()
+    return
+  }
+
   // Auto-expand on first message
   expand()
 
@@ -694,8 +702,11 @@ async function handleSendMessage() {
   // Don't send if both text and screenshot are empty
   if (!text && !sendScreenshot) return
 
-  // Disable send button during processing
-  sendBtn.disabled = true
+  // Change to generating state
+  isGenerating = true
+  sendBtn.title = 'Stop'
+  sendBtn.setAttribute('aria-label', 'Stop generating')
+  insertIcon(sendBtn, 'stop')
   messageInput.disabled = true
 
   try {
@@ -774,12 +785,17 @@ async function handleSendMessage() {
     if (!result.success) {
       // Show error message if initial request failed
       showError(result.error || 'Failed to get response')
+      resetSendButton()
     } else {
       console.log('Streaming started from', result.provider)
+      if (result.aborted) {
+        resetSendButton()
+      }
     }
   } catch (error) {
     console.error('Send message error:', error)
     showError('Error: ' + error.message)
+    resetSendButton()
   } finally {
     // Clear screenshot after sending
     if (screenshotMode === 'manual') {
@@ -795,11 +811,6 @@ async function handleSendMessage() {
       if (label) label.textContent = 'Using screen'
       messageInput.placeholder = 'Ask about your screen or conversation, or ↩ for Assist'
     }
-
-    // Re-enable input
-    sendBtn.disabled = false
-    messageInput.disabled = false
-    messageInput.focus()
   }
 }
 
@@ -840,6 +851,7 @@ function handleMessageComplete() {
   
   currentStreamingMessageId = null
   accumulatedText = ''
+  resetSendButton()
 }
 
 /**
@@ -865,6 +877,7 @@ function handleMessageError(error) {
 
   // Show error
   showError(error)
+  resetSendButton()
 }
 
 /**
@@ -1128,7 +1141,7 @@ function addCopyButtons(messageElement) {
         setTimeout(() => {
           copyBtn.innerHTML = getIcon('copy', 'icon-svg-sm')
           copyBtn.title = 'Copy code'
-        }, 2000)
+          }, 2000)
       })
     })
 

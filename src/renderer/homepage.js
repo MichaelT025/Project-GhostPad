@@ -410,15 +410,15 @@ function renderSessionList(container, sessions) {
       time.textContent = formatTime(session.updatedAt || session.createdAt)
 
       const renameBtn = document.createElement('button')
-      renameBtn.className = 'rename-btn'
+      renameBtn.className = 'icon-mini'
       renameBtn.type = 'button'
       renameBtn.title = 'Rename session'
 
       const pencilIconSpan = document.createElement('span')
-      pencilIconSpan.className = 'rename-icon'
+      pencilIconSpan.className = 'nav-icon'
       pencilIconSpan.setAttribute('data-icon', 'pencil')
       renameBtn.appendChild(pencilIconSpan)
-      insertIcon(pencilIconSpan, 'pencil', 'rename-icon')
+      insertIcon(pencilIconSpan, 'pencil')
 
       renameBtn.addEventListener('click', (e) => {
         e.stopPropagation()
@@ -426,16 +426,16 @@ function renderSessionList(container, sessions) {
       })
 
       const deleteBtn = document.createElement('button')
-      deleteBtn.className = 'delete-btn'
+      deleteBtn.className = 'icon-mini danger'
       deleteBtn.type = 'button'
       deleteBtn.title = 'Delete session'
       
       const trashIconSpan = document.createElement('span')
-      trashIconSpan.className = 'trash-icon'
+      trashIconSpan.className = 'nav-icon'
       trashIconSpan.setAttribute('data-icon', 'trash')
       
       deleteBtn.appendChild(trashIconSpan)
-      insertIcon(trashIconSpan, 'trash', 'trash-icon')
+      insertIcon(trashIconSpan, 'trash')
       
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation()
@@ -953,11 +953,9 @@ async function renderModeEditor(container, state) {
           <h2>System Prompt</h2>
           <p>This prompt defines the AI's behavior in this mode.</p>
         </div>
-        ${mode.isDefault ? `
-          <button id="mode-reset-prompt" class="mini-btn" type="button" style="font-size: 10px; padding: 2px 8px; border-color: rgba(255,255,255,0.1);">
-            Reset to Default
-          </button>
-        ` : ''}
+        <button id="mode-reset-prompt" class="mini-btn" type="button" style="font-size: 10px; padding: 2px 8px; border-color: rgba(255,255,255,0.1);">
+          ${mode.isDefault ? 'Reset to Default' : 'Clear Prompt'}
+        </button>
       </div>
       <textarea id="mode-prompt" class="textarea" style="min-height: 300px;" placeholder="Enter system prompt instructions...">${(sanitized.prompt || '').replace(/</g, '&lt;')}</textarea>
       <div class="helper-text" style="margin-top: var(--space-8);">Changes are saved automatically.</div>
@@ -1150,31 +1148,32 @@ async function initModesView() {
   const resetPromptModalIconEl = resetPromptModal?.querySelector('[data-icon="refresh"]')
   if (resetPromptModalIconEl) insertIcon(resetPromptModalIconEl, 'refresh', 'nav-icon')
 
-  resetPromptConfirm?.addEventListener('click', async () => {
-    resetPromptConfirm.disabled = true
-    resetPromptConfirm.textContent = 'Resetting...'
-    try {
-      const s = await fetchModesState(true)
-      const mode = s.modes.find(m => m.id === selectedModeId)
-      if (mode) {
-        const defaultModesResult = await window.electronAPI.getDefaultModes()
-        const defaultMode = (defaultModesResult?.modes || []).find(m => m.id === mode.id)
-        if (defaultMode) {
-          mode.prompt = defaultMode.prompt
-          await window.electronAPI.saveMode(mode)
-          cachedModes = null
-          await rerender()
-        }
-      }
-      resetPromptModal?.classList.remove('open')
-    } catch (err) {
-      console.error('Failed to reset prompt:', err)
-      showToast('Failed to reset prompt: ' + err.message, 'error')
-    } finally {
-      resetPromptConfirm.disabled = false
-      resetPromptConfirm.textContent = 'Reset Prompt'
-    }
-  })
+   resetPromptConfirm?.addEventListener('click', async () => {
+     resetPromptConfirm.disabled = true
+     resetPromptConfirm.textContent = 'Resetting...'
+     try {
+       const s = await fetchModesState(true)
+       const mode = s.modes.find(m => m.id === selectedModeId)
+       if (mode) {
+         const defaultModesResult = await window.electronAPI.getDefaultModes()
+         const defaultMode = (defaultModesResult?.modes || []).find(m => m.id === mode.id)
+
+         // Default modes reset to factory prompt; user-made modes clear prompt.
+         mode.prompt = defaultMode ? (defaultMode.prompt || '') : ''
+
+         await window.electronAPI.saveMode(mode)
+         cachedModes = null
+         await rerender()
+       }
+       resetPromptModal?.classList.remove('open')
+     } catch (err) {
+       console.error('Failed to reset prompt:', err)
+       showToast('Failed to reset prompt: ' + err.message, 'error')
+     } finally {
+       resetPromptConfirm.disabled = false
+       resetPromptConfirm.textContent = 'Reset Prompt'
+     }
+   })
 
   newBtn?.addEventListener('click', async () => {
     const mode = {
@@ -1264,11 +1263,20 @@ async function initModesView() {
   })
 
   editorEl.addEventListener('click', async (e) => {
-    const resetPromptBtn = e.target.closest('#mode-reset-prompt')
-    if (resetPromptBtn) {
-      document.getElementById('reset-prompt-modal')?.classList.add('open')
-      return
-    }
+     const resetPromptBtn = e.target.closest('#mode-reset-prompt')
+     if (resetPromptBtn) {
+       const modal = document.getElementById('reset-prompt-modal')
+       const s = await fetchModesState(true)
+       const mode = s.modes.find(m => m.id === selectedModeId)
+       const p = modal?.querySelector('p')
+       if (p) {
+         p.textContent = mode?.isDefault
+           ? "This will revert the system prompt for this mode to its original factory setting. Your provider and model selections will not be changed."
+           : "This will clear the system prompt for this mode. Your provider and model selections will not be changed."
+       }
+       modal?.classList.add('open')
+       return
+     }
 
     const modelItem = e.target.closest('.model-item')
     if (modelItem && modelItem.getAttribute('data-model-id')) {
@@ -1869,6 +1877,34 @@ async function init() {
 
   window.electronAPI.onNewChat(() => {
     handleNewChat().catch(console.error)
+  })
+
+  // Keep Configuration view in sync when model changes elsewhere (e.g. model switcher)
+  window.electronAPI.onConfigChanged(async () => {
+    try {
+      cachedProvidersMeta = null
+      cachedActiveProvider = null
+
+      if (!configViewInitialized) return
+
+      const container = document.getElementById('config-content')
+      if (!container) return
+
+      const state = await fetchConfigurationState(true)
+
+      const providerSelect = container.querySelector('#config-provider')
+      const providerId = providerSelect?.value || state.activeProvider || state.providers?.[0]?.id || ''
+
+      if (providerSelect && state.activeProvider) {
+        providerSelect.value = state.activeProvider
+      }
+
+      if (providerId) {
+        await updateProviderDependentUI(container, providerId)
+      }
+    } catch (error) {
+      console.error('Failed to refresh config view:', error)
+    }
   })
 
   const renameModal = document.getElementById('rename-modal')

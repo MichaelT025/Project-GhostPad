@@ -823,7 +823,7 @@ Session saved to local storage
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2024-12-16 | Initial PRD creation |
+| 1.0 | 2025-12-16 | Initial PRD creation |
 
 ---
 
