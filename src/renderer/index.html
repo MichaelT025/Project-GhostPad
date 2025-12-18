@@ -168,6 +168,16 @@
       color: white;
     }
 
+    /* Icon switch animation */
+    #collapse-btn svg {
+      animation: icon-in 0.25s var(--easing);
+    }
+
+    @keyframes icon-in {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
     /* Messages Container */
     .messages-container {
       flex: 1;
@@ -218,7 +228,7 @@
 
     .messages-container::after {
       bottom: 88px; /* Height of input area */
-      background: linear-gradient(to top, rgba(18, 18, 18, 0.92), transparent);
+      display: none; /* Removed shadow per request */
     }
 
     .messages-container.has-scroll-top::before {
@@ -226,7 +236,7 @@
     }
 
     .messages-container.has-scroll-bottom::after {
-      opacity: 1;
+      opacity: 0;
     }
 
     /* Chat Wrapper (max-width constraint) */
@@ -313,14 +323,14 @@
     /* Scroll to bottom button */
     .scroll-bottom-btn {
       position: absolute;
-      bottom: 80px; /* Right above input area */
+      bottom: 140px; /* Slightly higher again */
       right: 24px;
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      background: var(--panel-strong);
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
+      background: rgba(30, 30, 30, 0.8); /* Dark background */
+      border: 1px solid rgba(182, 179, 180, 0.2); /* Subtle accent border */
+      color: var(--accent); /* Accent icon */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -329,8 +339,12 @@
       visibility: hidden;
       transform: translateY(10px);
       transition: all var(--duration-normal) var(--easing);
-      box-shadow: var(--shadow-elev-2);
+      box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.5),
+        0 0 12px 1px rgba(182, 179, 180, 0.15); /* Static faint emission glow */
       z-index: 20;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
 
     .scroll-bottom-btn.visible {
@@ -340,10 +354,13 @@
     }
 
     .scroll-bottom-btn:hover {
-      background: var(--panel-muted);
-      color: var(--text-primary);
-      border-color: var(--border-strong);
+      background: var(--accent);
+      color: #0c0e12;
       transform: translateY(-2px);
+      box-shadow: 
+        0 6px 16px rgba(0, 0, 0, 0.4),
+        0 0 20px 2px rgba(182, 179, 180, 0.3); /* Stronger glow on hover */
+      border-color: rgba(0, 0, 0, 0.2);
     }
 
     .scroll-bottom-btn svg {

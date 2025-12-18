@@ -198,6 +198,29 @@ app.whenReady().then(() => {
     console.error('Failed to cleanup old sessions:', error)
   })
 
+  // Best-effort model refresh on startup so the UI isn't stuck on defaults.
+  ;(async () => {
+    try {
+      const ModelRefreshService = require('../services/model-refresh')
+      const providerIds = LLMFactory.getAvailableProviders()
+
+      await Promise.all(providerIds.map(async (providerId) => {
+        const meta = LLMFactory.getProviderMeta(providerId)
+        const apiKey = configService.getApiKey(providerId)
+
+        const requiresApiKey = meta?.requiresApiKey !== undefined
+          ? meta.requiresApiKey
+          : meta?.type !== 'openai-compatible'
+
+        if (requiresApiKey && !apiKey && meta?.type !== 'anthropic') return
+
+        await ModelRefreshService.refreshModels(providerId, apiKey)
+      }))
+    } catch (error) {
+      console.error('Startup model refresh failed:', error)
+    }
+  })()
+
   createMainWindow()
   registerHotkeys()
 
@@ -563,6 +586,35 @@ ipcMain.handle('validate-api-key', async (_event, provider) => {
 
     if (!apiKey) {
       return { success: false, isValid: false, error: 'No API key configured' }
+    }
+
+    // OpenRouter-specific: use the dedicated key endpoint (reliable 401 on invalid keys).
+    if (provider === 'openrouter') {
+      try {
+        const https = require('https')
+        await new Promise((resolve, reject) => {
+          const req = https.get(
+            'https://openrouter.ai/api/v1/key',
+            { headers: { Authorization: `Bearer ${apiKey}` } },
+            (res) => {
+              let data = ''
+              res.on('data', (chunk) => { data += chunk })
+              res.on('end', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) return resolve(data)
+                return reject(new Error(`HTTP ${res.statusCode}: ${data}`))
+              })
+            }
+          )
+          req.on('error', reject)
+          req.setTimeout(10000, () => {
+            req.destroy()
+            reject(new Error('Request timeout'))
+          })
+        })
+        return { success: true, isValid: true }
+      } catch (err) {
+        return { success: true, isValid: false, error: err.message }
+      }
     }
 
     const config = configService.getProviderConfig(provider)

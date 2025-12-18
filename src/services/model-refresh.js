@@ -283,28 +283,43 @@ class ModelRefreshService {
    * @returns {Promise<Object>} Models object
    */
   async fetchOpenRouterModels(apiKey = '') {
-    try {
-      const headers = apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {}
-      const response = await this.httpsRequest('https://openrouter.ai/api/v1/models', headers)
-      const data = JSON.parse(response)
-
-      const models = {}
-      if (data.data && Array.isArray(data.data)) {
-        // Filter for vision-capable models
-        data.data
-          .filter(m => m.architecture?.modality?.includes('image'))
-          .forEach(model => {
-            models[model.id] = {
-              name: model.name || this.formatModelName(model.id)
-            }
-          })
-      }
-
-      return models
-    } catch (error) {
-      console.warn('Could not fetch OpenRouter models:', error.message)
-      return {}
+    if (!apiKey) {
+      throw new Error('API key required for OpenRouter')
     }
+
+    const headers = { 'Authorization': `Bearer ${apiKey}` }
+    const response = await this.httpsRequest('https://openrouter.ai/api/v1/models', headers)
+    const data = JSON.parse(response)
+
+    const allModels = []
+    if (data.data && Array.isArray(data.data)) {
+      allModels.push(...data.data)
+    }
+
+    const models = {}
+
+    // Prefer vision-capable models when possible.
+    const isVisionCapable = (m) => {
+      const inputModalities = m?.architecture?.input_modalities
+      if (Array.isArray(inputModalities)) return inputModalities.includes('image')
+
+      const modality = m?.architecture?.modality
+      if (typeof modality === 'string' && modality.includes('image')) return true
+
+      if (typeof m?.id === 'string' && m.id.includes('vision')) return true
+      return false
+    }
+
+    const visionModels = allModels.filter(isVisionCapable)
+    const chosen = visionModels.length ? visionModels : allModels
+
+    chosen.forEach(model => {
+      models[model.id] = {
+        name: model.name || this.formatModelName(model.id)
+      }
+    })
+
+    return models
   }
 
   /**

@@ -903,11 +903,10 @@ async function renderModeEditor(container, state) {
           <label for="mode-model-search">Search models</label>
           <div class="helper-text" style="margin-bottom: var(--space-8);">Click a model below to select it.</div>
           <input id="mode-model-search" class="text-input" type="text" placeholder="Search by name" autocomplete="off" />
-          <div id="mode-model-recommendation" class="helper-text"></div>
         </div>
       </div>
 
-      <div id="mode-model-list" class="model-list" style="max-height: 240px;" aria-label="Mode models"></div>
+      <div id="mode-model-list" class="model-list" style="max-height: 240px; margin-top: var(--space-8);" aria-label="Mode models"></div>
     </div>
 
     <div class="config-card">
@@ -929,17 +928,6 @@ async function renderModeEditor(container, state) {
 
   const providerSelect = container.querySelector('#mode-provider')
   if (providerSelect) providerSelect.value = providerId
-
-  const recommendationEl = container.querySelector('#mode-model-recommendation')
-  if (recommendationEl) {
-    const recommended = {
-      bolt: 'Gemini 2.5 Flash',
-      tutor: 'GPT-4o',
-      coder: 'GPT-4o'
-    }[sanitized.id]
-
-    recommendationEl.textContent = recommended ? `Recommended: ${recommended}` : ''
-  }
 
   await updateModeModelList(container, providerId, sanitized.model)
 }
@@ -1237,6 +1225,43 @@ async function initModesView() {
   modesViewInitialized = true
 }
 
+const modelRefreshInFlight = new Map()
+const lastModelRefreshAt = new Map()
+
+async function refreshProviderModels(container, providerId, { force = false, reason = '' } = {}) {
+  if (!providerId) return { skipped: true }
+
+  const now = Date.now()
+  const last = lastModelRefreshAt.get(providerId) || 0
+  const tooSoon = now - last < 2 * 60 * 1000
+
+  if (!force && (modelRefreshInFlight.has(providerId) || tooSoon)) {
+    return { skipped: true }
+  }
+
+  const run = (async () => {
+    try {
+      lastModelRefreshAt.set(providerId, now)
+      const result = await window.electronAPI.refreshModels(providerId)
+      if (!result?.success) {
+        return { success: false, error: result?.error || 'Failed to refresh models.' }
+      }
+
+      cachedProvidersMeta = null
+      await fetchConfigurationState(true)
+      await updateProviderDependentUI(container, providerId)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error.message }
+    } finally {
+      modelRefreshInFlight.delete(providerId)
+    }
+  })()
+
+  modelRefreshInFlight.set(providerId, run)
+  return run
+}
+
 async function updateProviderDependentUI(container, providerId) {
   const keyInput = container.querySelector('#config-api-key')
   const keyStatus = container.querySelector('#config-key-status')
@@ -1268,7 +1293,31 @@ async function updateProviderDependentUI(container, providerId) {
   const selectedModelId = providerConfig.model || ''
 
   const providerMeta = (state.providers || []).find(p => p.id === providerId)
-  const models = extractModelsFromProviderMeta(providerMeta)
+
+  // Avoid showing the embedded/default model list until we've refreshed at least once.
+  // We still *attempt* a refresh automatically when possible.
+  const hasFetchedModels = !!providerMeta?.lastFetched
+  const canAutoRefresh = isLocalProvider || providerMeta?.type === 'anthropic' || !!apiKey
+
+  if (!hasFetchedModels) {
+    if (modelList) {
+      modelList.innerHTML = '<div class="status-line">Fetching models…</div>'
+    }
+
+    if (canAutoRefresh && !modelRefreshInFlight.has(providerId)) {
+      refreshProviderModels(container, providerId, { force: true, reason: 'auto' })
+        .then(result => {
+          if (result?.success === false) {
+            setStatus(modelStatus, result.error || 'Failed to refresh models.', 'bad')
+          }
+        })
+        .catch(console.error)
+    } else if (!canAutoRefresh) {
+      setStatus(modelStatus, 'Enter an API key to load models.', null)
+    }
+  }
+
+  const models = (hasFetchedModels ? extractModelsFromProviderMeta(providerMeta) : [])
     .sort((a, b) => (a.id || '').localeCompare(b.id || ''))
 
   const query = (modelSearch?.value || '').trim()
@@ -1315,6 +1364,7 @@ async function updateProviderDependentUI(container, providerId) {
 
   if (modelList) {
     if (!filteredModels.length) {
+      if (!hasFetchedModels) return
       modelList.innerHTML = '<div class="status-line">No models found</div>'
       return
     }
@@ -1443,7 +1493,14 @@ async function initConfigurationView() {
     if (!providerId) return
     await window.electronAPI.setActiveProvider(providerId)
     cachedActiveProvider = providerId
+
+    setStatus(modelStatus, 'Refreshing models…', null)
     await updateProviderDependentUI(container, providerId)
+
+    const refreshed = await refreshProviderModels(container, providerId, { force: true, reason: 'switch' })
+    if (refreshed?.success === false) {
+      setStatus(modelStatus, refreshed.error || 'Failed to refresh models.', 'bad')
+    }
   }
 
   providerSelect?.addEventListener('change', async () => {
@@ -1506,6 +1563,13 @@ async function initConfigurationView() {
     const result = await window.electronAPI.validateApiKey(providerId)
     if (result?.success) {
       setStatus(keyStatus, result.isValid ? 'Key is valid.' : 'Key is invalid.', result.isValid ? 'good' : 'bad')
+      if (result.isValid) {
+        setStatus(modelStatus, 'Refreshing models…', null)
+        const refreshed = await refreshProviderModels(container, providerId, { force: true, reason: 'key' })
+        if (refreshed?.success === false) {
+          setStatus(modelStatus, refreshed.error || 'Failed to refresh models.', 'bad')
+        }
+      }
     } else {
       setStatus(keyStatus, result?.error || 'Failed to validate key.', 'bad')
     }
@@ -1602,7 +1666,16 @@ async function initConfigurationView() {
     await updateProviderDependentUI(container, providerId)
   })
 
-  await updateProviderDependentUI(container, getSelectedProvider())
+  const initialProvider = getSelectedProvider()
+  await updateProviderDependentUI(container, initialProvider)
+
+  // Startup behavior: try to refresh models immediately so we don't show stale defaults.
+  setStatus(modelStatus, 'Refreshing models…', null)
+  const refreshed = await refreshProviderModels(container, initialProvider, { force: true, reason: 'startup' })
+  if (refreshed?.success === false) {
+    setStatus(modelStatus, refreshed.error || 'Failed to refresh models.', 'bad')
+  }
+
   configViewInitialized = true
 }
 

@@ -406,11 +406,10 @@ async function init() {
   // Initialize custom icons from directory
   await initIcons()
 
-   // Insert icons into UI elements
-   insertIcon(closeBtn, 'close', 'icon-svg')
-   insertIcon(hideBtn, 'minus', 'icon-svg')
-   insertIcon(collapseBtn, 'collapse', 'icon-svg')
-   insertIcon(newChatBtn, 'newchat', 'icon-svg')
+    // Insert icons into UI elements
+    insertIcon(closeBtn, 'close', 'icon-svg')
+    insertIcon(hideBtn, 'minus', 'icon-svg')
+    insertIcon(newChatBtn, 'newchat', 'icon-svg')
 
    const screenshotIcon = document.getElementById('screenshot-icon')
    if (screenshotIcon) {
@@ -537,6 +536,8 @@ function updateCollapseState() {
   if (isCollapsed) {
     // Apply collapsed styles first so measurements are accurate
     overlay.classList.add('overlay-collapsed')
+    insertIcon(collapseBtn, 'expand', 'icon-svg')
+    collapseBtn.title = 'Expand (Ctrl+\')'
     autosizeMessageInput()
 
     requestAnimationFrame(() => {
@@ -554,6 +555,8 @@ function updateCollapseState() {
   } else {
     // Expand window first, then animate content in
     window.electronAPI.setCollapsed(false)
+    insertIcon(collapseBtn, 'collapse', 'icon-svg')
+    collapseBtn.title = 'Collapse (Ctrl+\')'
 
     requestAnimationFrame(() => {
       if (isCollapsed) return
