@@ -1,5 +1,7 @@
 import { initIcons, insertIcon } from './assets/icons/icons.js'
 
+import { showToast } from './utils/ui-helpers.js'
+
 const selectedSessionIds = new Set()
 
 function formatTime(iso) {
@@ -49,7 +51,7 @@ async function handleSessionClick(id) {
 async function handleDeleteSession(id) {
   const result = await window.electronAPI.deleteSession(id)
   if (!result?.success) {
-    window.alert(result?.error || 'Failed to delete session')
+    showToast(result?.error || 'Failed to delete session', 'error')
   }
 
   // Remove from selection if present
@@ -61,6 +63,51 @@ async function handleDeleteSession(id) {
   await loadSessions()
 }
 
+let renameModalSessionId = null
+
+function openRenameModal(sessionId, currentTitle = '') {
+  const backdrop = document.getElementById('rename-modal')
+  const input = document.getElementById('rename-input')
+  const status = document.getElementById('rename-status')
+  if (!backdrop || !input) return
+
+  renameModalSessionId = sessionId
+  if (status) status.textContent = ''
+
+  input.value = (currentTitle || '').trim() || 'New Chat'
+  backdrop.classList.add('open')
+
+  // Focus + select for quick editing
+  setTimeout(() => {
+    input.focus()
+    input.select()
+  }, 0)
+}
+
+function closeRenameModal() {
+  const backdrop = document.getElementById('rename-modal')
+  const status = document.getElementById('rename-status')
+  if (status) status.textContent = ''
+  renameModalSessionId = null
+  backdrop?.classList.remove('open')
+}
+
+async function submitRenameModal() {
+  const input = document.getElementById('rename-input')
+  const status = document.getElementById('rename-status')
+  const id = renameModalSessionId
+  if (!input || !id) return
+
+  const finalTitle = (input.value || '').trim() || 'New Chat'
+  const result = await window.electronAPI.renameSession(id, finalTitle)
+  if (result?.success) {
+    closeRenameModal()
+    await loadSessions()
+  } else {
+    if (status) status.textContent = result?.error || 'Failed to rename.'
+  }
+}
+
 async function handleRenameSession(id) {
   // Find current title from DOM to pre-fill
   let currentTitle = ''
@@ -69,16 +116,7 @@ async function handleRenameSession(id) {
     currentTitle = card.querySelector('.session-title')?.textContent || ''
   }
 
-  const newTitle = window.prompt('Rename conversation:', currentTitle)
-  if (newTitle !== null) { // Allow empty string to reset to "New Chat" if backend handles it, but typically we want value
-    const finalTitle = newTitle.trim() || 'New Chat'
-    const result = await window.electronAPI.renameSession(id, finalTitle)
-    if (result?.success) {
-      await loadSessions()
-    } else {
-      window.alert('Failed to rename: ' + (result?.error || 'Unknown error'))
-    }
-  }
+  openRenameModal(id, currentTitle)
 }
 
 let showingSaved = false
@@ -86,7 +124,7 @@ let showingSaved = false
 async function handleToggleSaved(id) {
   const result = await window.electronAPI.toggleSessionSaved(id)
   if (!result?.success) {
-    window.alert('Failed to update saved status: ' + (result?.error || 'Unknown error'))
+    showToast('Failed to update saved status: ' + (result?.error || 'Unknown error'), 'error')
   }
   // Refresh list
   await loadSessions()
@@ -337,6 +375,22 @@ function renderSessionList(container, sessions) {
       time.className = 'timestamp'
       time.textContent = formatTime(session.updatedAt || session.createdAt)
 
+      const renameBtn = document.createElement('button')
+      renameBtn.className = 'rename-btn'
+      renameBtn.type = 'button'
+      renameBtn.title = 'Rename session'
+
+      const pencilIconSpan = document.createElement('span')
+      pencilIconSpan.className = 'rename-icon'
+      pencilIconSpan.setAttribute('data-icon', 'pencil')
+      renameBtn.appendChild(pencilIconSpan)
+      insertIcon(pencilIconSpan, 'pencil', 'rename-icon')
+
+      renameBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        handleRenameSession(session.id)
+      })
+
       const deleteBtn = document.createElement('button')
       deleteBtn.className = 'delete-btn'
       deleteBtn.type = 'button'
@@ -357,6 +411,7 @@ function renderSessionList(container, sessions) {
       // Append in specific order for CSS to handle visibility
       right.appendChild(count)
       right.appendChild(time)
+      right.appendChild(renameBtn)
       right.appendChild(deleteBtn)
 
       const activate = () => handleSessionClick(session.id)
@@ -521,7 +576,7 @@ function renderConfig(container, state) {
       </div>
     </div>
 
-    <div id="config-api-key-card" class="config-card">
+     <div id="config-api-key-card" class="config-card">
       <h2>API Key</h2>
       <div class="form-row">
         <div class="form-field" style="min-width: 320px;">
@@ -551,7 +606,64 @@ function renderConfig(container, state) {
           <button id="config-refresh-models" class="mini-btn" type="button">Refresh models</button>
         </div>
       </div>
-      <div id="config-model-list" class="model-list" aria-label="Models"></div>
+      <div class="form-row" style="margin-top: var(--space-12);">
+        <div class="form-field">
+          <label for="config-model-select">Default model</label>
+          <select id="config-model-select" class="select-input"></select>
+          <div id="config-model-status" class="status-line"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-card">
+      <h2>Sessions</h2>
+      <p>Control how sessions are named.</p>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Auto-title sessions</label>
+          <div class="inline-actions">
+            <label class="toggle-switch" aria-label="Auto-title sessions">
+              <input id="config-auto-title" type="checkbox" />
+              <span class="toggle-slider"></span>
+            </label>
+            <div id="config-auto-title-msg" class="helper-text" style="margin-top: 0;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-card">
+      <h2>Screenshots</h2>
+      <p>Control whether screenshots auto-attach when you send.</p>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Auto-attach screenshots</label>
+          <div class="inline-actions">
+            <label class="toggle-switch" aria-label="Auto-attach screenshots">
+              <input id="config-screenshot-mode" type="checkbox" />
+              <span class="toggle-slider"></span>
+            </label>
+            <div id="config-screenshot-mode-msg" class="helper-text" style="margin-top: 0;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-card">
+      <h2>Memory</h2>
+      <p>Control what gets persisted to sessions.</p>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Exclude screenshots from memory</label>
+          <div class="inline-actions">
+            <label class="toggle-switch" aria-label="Exclude screenshots from memory">
+              <input id="config-exclude-screenshots" type="checkbox" />
+              <span class="toggle-slider"></span>
+            </label>
+            <div id="config-exclude-screenshots-msg" class="helper-text" style="margin-top: 0;"></div>
+          </div>
+        </div>
+      </div>
     </div>
   `
 
@@ -570,7 +682,8 @@ function setStatus(el, text, kind) {
 async function updateProviderDependentUI(container, providerId) {
   const keyInput = container.querySelector('#config-api-key')
   const keyStatus = container.querySelector('#config-key-status')
-  const modelList = container.querySelector('#config-model-list')
+  const modelSelect = container.querySelector('#config-model-select')
+  const modelStatus = container.querySelector('#config-model-status')
   const modelSearch = container.querySelector('#config-model-search')
   const apiKeyCard = container.querySelector('#config-api-key-card')
 
@@ -581,6 +694,7 @@ async function updateProviderDependentUI(container, providerId) {
   }
 
   setStatus(keyStatus, '', null)
+  setStatus(modelStatus, '', null)
 
   const [keyResult, providerConfigResult, state] = await Promise.all([
     window.electronAPI.getApiKey(providerId),
@@ -614,23 +728,32 @@ async function updateProviderDependentUI(container, providerId) {
     }
   }
 
-  if (modelList) {
-    modelList.innerHTML = filteredModels.length
-      ? filteredModels.map(m => {
-          const activeClass = m.id === selectedModelId ? 'active' : ''
-          return `<div class="model-item ${activeClass}" data-model-id="${m.id}"><span>${m.id}</span><span class="helper-text">${m.id === selectedModelId ? 'Selected' : 'Set'}</span></div>`
-        }).join('')
-      : `<div class="helper-text">No models found.</div>`
+  if (modelSelect) {
+    if (!filteredModels.length) {
+      modelSelect.innerHTML = '<option value="">No models found</option>'
+      modelSelect.value = ''
+      modelSelect.disabled = true
+      return
+    }
 
-    modelList.querySelectorAll('.model-item').forEach(item => {
-      item.addEventListener('click', async () => {
-        const modelId = item.getAttribute('data-model-id')
-        if (!modelId) return
+    modelSelect.disabled = false
+    modelSelect.innerHTML = filteredModels
+      .map(m => `<option value="${m.id}">${m.id}</option>`)
+      .join('')
 
-        await window.electronAPI.setProviderConfig(providerId, { ...providerConfig, model: modelId })
-        await updateProviderDependentUI(container, providerId)
-      })
-    })
+    // Preserve current selection if present; otherwise fall back to first option
+    const candidate = selectedModelId && filteredModels.some(m => m.id === selectedModelId)
+      ? selectedModelId
+      : (filteredModels[0]?.id || '')
+
+    modelSelect.value = candidate
+
+    // If selection differs from stored config (e.g., config empty), show a hint
+    if (selectedModelId && candidate !== selectedModelId) {
+      setStatus(modelStatus, 'Selected model is filtered out by search.', null)
+    } else {
+      setStatus(modelStatus, '', null)
+    }
   }
 }
 
@@ -649,8 +772,71 @@ async function initConfigurationView() {
   const testBtn = container.querySelector('#config-key-test')
   const refreshModelsBtn = container.querySelector('#config-refresh-models')
   const modelSearch = container.querySelector('#config-model-search')
+  const modelSelect = container.querySelector('#config-model-select')
+  const modelStatus = container.querySelector('#config-model-status')
+
+  const autoTitleToggle = container.querySelector('#config-auto-title')
+  const autoTitleMsg = container.querySelector('#config-auto-title-msg')
+  const screenshotModeToggle = container.querySelector('#config-screenshot-mode')
+  const screenshotModeMsg = container.querySelector('#config-screenshot-mode-msg')
+  const excludeScreenshotsToggle = container.querySelector('#config-exclude-screenshots')
+  const excludeScreenshotsMsg = container.querySelector('#config-exclude-screenshots-msg')
+
+  const setAutoTitleMsg = (enabled) => {
+    if (!autoTitleMsg) return
+    autoTitleMsg.textContent = enabled
+      ? 'On: generates a short title automatically.'
+      : 'Off: keep the default title until you rename it.'
+  }
+
+  const setScreenshotMsg = (isAuto) => {
+    if (!screenshotModeMsg) return
+    screenshotModeMsg.textContent = isAuto
+      ? 'Auto mode: captures and attaches your screen on every send.'
+      : 'Manual mode: use the camera button / hotkey to attach a screenshot.'
+  }
+
+  const setExcludeScreenshotsMsg = (exclude) => {
+    if (!excludeScreenshotsMsg) return
+    excludeScreenshotsMsg.textContent = exclude
+      ? 'On: screenshot attachments are not stored in session history.'
+      : 'Off: screenshots are stored in session history.'
+  }
 
   const getSelectedProvider = () => providerSelect?.value || state.activeProvider || state.providers?.[0]?.id || ''
+
+  // Load and apply non-provider settings
+  try {
+    const [sessionSettingsResult, screenshotModeResult, excludeResult] = await Promise.all([
+      window.electronAPI.getSessionSettings(),
+      window.electronAPI.getScreenshotMode(),
+      window.electronAPI.getExcludeScreenshotsFromMemory()
+    ])
+
+    const autoTitleEnabled = sessionSettingsResult?.success
+      ? sessionSettingsResult.settings?.autoTitleSessions !== false
+      : true
+
+    if (autoTitleToggle) {
+      autoTitleToggle.checked = autoTitleEnabled
+      setAutoTitleMsg(autoTitleEnabled)
+    }
+
+    if (screenshotModeToggle) {
+      const mode = screenshotModeResult?.success ? screenshotModeResult.mode : 'manual'
+      const isAuto = mode === 'auto'
+      screenshotModeToggle.checked = isAuto
+      setScreenshotMsg(isAuto)
+    }
+
+    if (excludeScreenshotsToggle) {
+      const exclude = excludeResult?.success ? excludeResult.exclude !== false : true
+      excludeScreenshotsToggle.checked = exclude
+      setExcludeScreenshotsMsg(exclude)
+    }
+  } catch (error) {
+    console.error('Failed to load config toggles:', error)
+  }
 
   const setProvider = async (providerId) => {
     if (!providerId) return
@@ -663,12 +849,43 @@ async function initConfigurationView() {
     await setProvider(providerSelect.value)
   })
 
+  autoTitleToggle?.addEventListener('change', async () => {
+    try {
+      const enabled = !!autoTitleToggle.checked
+      setAutoTitleMsg(enabled)
+      await window.electronAPI.setAutoTitleSessions(enabled)
+    } catch (error) {
+      console.error('Failed to update auto title setting:', error)
+    }
+  })
+
+  screenshotModeToggle?.addEventListener('change', async () => {
+    try {
+      const isAuto = !!screenshotModeToggle.checked
+      setScreenshotMsg(isAuto)
+      await window.electronAPI.setScreenshotMode(isAuto ? 'auto' : 'manual')
+    } catch (error) {
+      console.error('Failed to update screenshot mode:', error)
+    }
+  })
+
+  excludeScreenshotsToggle?.addEventListener('change', async () => {
+    try {
+      const exclude = !!excludeScreenshotsToggle.checked
+      setExcludeScreenshotsMsg(exclude)
+      await window.electronAPI.setExcludeScreenshotsFromMemory(exclude)
+    } catch (error) {
+      console.error('Failed to update exclude screenshots setting:', error)
+    }
+  })
+
   const autoTestKey = async () => {
     const providerId = getSelectedProvider()
     const apiKey = (keyInput?.value || '').trim()
 
     if (!apiKey) {
       setStatus(keyStatus, '', null)
+      setStatus(modelStatus, '', null)
       return
     }
 
@@ -781,6 +998,22 @@ async function initConfigurationView() {
     await updateProviderDependentUI(container, getSelectedProvider())
   })
 
+  modelSelect?.addEventListener('change', async () => {
+    const providerId = getSelectedProvider()
+    const modelId = modelSelect.value
+    if (!providerId || !modelId) return
+
+    setStatus(modelStatus, 'Saving…', null)
+
+    const providerConfigResult = await window.electronAPI.getProviderConfig(providerId)
+    const providerConfig = providerConfigResult?.success ? (providerConfigResult.config || {}) : {}
+
+    await window.electronAPI.setProviderConfig(providerId, { ...providerConfig, model: modelId })
+    setStatus(modelStatus, 'Saved.', 'good')
+
+    await updateProviderDependentUI(container, providerId)
+  })
+
   // Initial render of dependent bits
   await updateProviderDependentUI(container, getSelectedProvider())
 
@@ -806,7 +1039,7 @@ function wireNavigation() {
 
   if (navModes) {
     navModes.addEventListener('click', () => {
-      window.alert('Modes page is coming soon.')
+      showToast('Modes page is coming soon.', 'info')
     })
   }
 
@@ -849,6 +1082,7 @@ async function init() {
   const savedBtn = document.getElementById('saved-messages')
   // selectBtn removed
   const searchInput = document.getElementById('search-input')
+  const checkUpdateBtn = document.getElementById('check-update')
   const reportBugBtn = document.getElementById('report-bug')
   const quitBtn = document.getElementById('quit-shade')
   const minimizeBtn = document.getElementById('dashboard-minimize')
@@ -896,8 +1130,22 @@ async function init() {
     }, 180)
   })
 
+  checkUpdateBtn?.addEventListener('click', async () => {
+    try {
+      const result = await window.electronAPI.checkForUpdates()
+      if (result.updateAvailable) {
+        showToast(`Update available: v${result.version}`, 'info', 5000)
+      } else {
+        showToast('You are running the latest version.', 'success')
+      }
+    } catch (error) {
+      console.error('Update check failed:', error)
+      showToast('Failed to check for updates. Please try again later.', 'error')
+    }
+  })
+
   reportBugBtn?.addEventListener('click', () => {
-    window.alert('Coming soon: bug reporter. For now, open an issue on GitHub.')
+    showToast('Bug reporter coming soon. Open an issue on GitHub.', 'info')
   })
 
   quitBtn?.addEventListener('click', async () => {
@@ -906,6 +1154,31 @@ async function init() {
 
   window.electronAPI.onNewChat(() => {
     handleNewChat().catch(console.error)
+  })
+
+  // Rename modal wiring
+  const renameModal = document.getElementById('rename-modal')
+  const renameInput = document.getElementById('rename-input')
+  const renameCancel = document.getElementById('rename-cancel')
+  const renameSave = document.getElementById('rename-save')
+
+  renameCancel?.addEventListener('click', closeRenameModal)
+  renameSave?.addEventListener('click', () => submitRenameModal().catch(console.error))
+
+  renameModal?.addEventListener('click', (e) => {
+    if (e.target === renameModal) {
+      closeRenameModal()
+    }
+  })
+
+  renameInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeRenameModal()
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      submitRenameModal().catch(console.error)
+    }
   })
 
   window.electronAPI.onContextMenuCommand(({ command, sessionId }) => {

@@ -73,7 +73,15 @@ function migrateConfig(oldConfig) {
     screenshotMode: 'manual',
     memoryLimit: 30,
     modes: oldConfig.modes || [],
-    activeMode: oldConfig.activeMode || 'default'
+    activeMode: oldConfig.activeMode || 'default',
+    memorySettings: {
+      historyLimit: 10,
+      enableSummarization: true,
+      excludeScreenshotsFromMemory: true
+    },
+    sessionSettings: {
+      autoTitleSessions: true
+    }
   }
 
   // Migrate provider data
@@ -152,7 +160,11 @@ class ConfigService {
       activeMode: 'default',
       memorySettings: {
         historyLimit: 10,
-        enableSummarization: true
+        enableSummarization: true,
+        excludeScreenshotsFromMemory: true
+      },
+      sessionSettings: {
+        autoTitleSessions: true
       }
     }
 
@@ -168,7 +180,21 @@ class ConfigService {
     try {
       if (fs.existsSync(this.configPath)) {
         const data = fs.readFileSync(this.configPath, 'utf8')
-        let loadedConfig = { ...this.defaultConfig, ...JSON.parse(data) }
+        const parsedConfig = JSON.parse(data)
+
+        // Merge with defaults (including nested objects)
+        let loadedConfig = {
+          ...this.defaultConfig,
+          ...parsedConfig,
+          memorySettings: {
+            ...this.defaultConfig.memorySettings,
+            ...(parsedConfig?.memorySettings || {})
+          },
+          sessionSettings: {
+            ...this.defaultConfig.sessionSettings,
+            ...(parsedConfig?.sessionSettings || {})
+          }
+        }
         
         // Check if config needs migration from old format
         if (needsMigration(loadedConfig)) {
@@ -480,6 +506,50 @@ class ConfigService {
       this.config.memorySettings = this.defaultConfig.memorySettings
     }
     this.config.memorySettings.summarizationThreshold = threshold
+    this.saveConfig()
+  }
+
+  getExcludeScreenshotsFromMemory() {
+    const settings = this.getMemorySettings()
+    return settings.excludeScreenshotsFromMemory !== false
+  }
+
+  setExcludeScreenshotsFromMemory(exclude) {
+    if (!this.config.memorySettings) {
+      this.config.memorySettings = this.defaultConfig.memorySettings
+    }
+    this.config.memorySettings.excludeScreenshotsFromMemory = !!exclude
+    this.saveConfig()
+  }
+
+  getScreenshotMode() {
+    return this.config.screenshotMode || 'manual'
+  }
+
+  setScreenshotMode(mode) {
+    const normalized = mode === 'auto' ? 'auto' : 'manual'
+    this.config.screenshotMode = normalized
+    this.saveConfig()
+  }
+
+  getSessionSettings() {
+    if (!this.config.sessionSettings) {
+      this.config.sessionSettings = this.defaultConfig.sessionSettings
+      this.saveConfig()
+    }
+    return this.config.sessionSettings
+  }
+
+  getAutoTitleSessions() {
+    const settings = this.getSessionSettings()
+    return settings.autoTitleSessions !== false
+  }
+
+  setAutoTitleSessions(enabled) {
+    if (!this.config.sessionSettings) {
+      this.config.sessionSettings = this.defaultConfig.sessionSettings
+    }
+    this.config.sessionSettings.autoTitleSessions = !!enabled
     this.saveConfig()
   }
 }

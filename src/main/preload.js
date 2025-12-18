@@ -50,6 +50,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('toggle-collapse', () => callback())
   },
 
+  // Listen for screenshot capture request (from Ctrl+Shift+S)
+  onCaptureScreenshot: (callback) => {
+    ipcRenderer.on('capture-screenshot', () => callback())
+  },
+
   // Context menu commands
   onContextMenuCommand: (callback) => {
     ipcRenderer.on('context-menu-command', (_event, data) => callback(data))
@@ -76,6 +81,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getHistoryLimit: () => ipcRenderer.invoke('get-history-limit'),
   setHistoryLimit: (limit) => ipcRenderer.invoke('set-history-limit', limit),
   setSummarizationEnabled: (enabled) => ipcRenderer.invoke('set-summarization-enabled', enabled),
+  getExcludeScreenshotsFromMemory: () => ipcRenderer.invoke('get-exclude-screenshots-from-memory'),
+  setExcludeScreenshotsFromMemory: (exclude) => ipcRenderer.invoke('set-exclude-screenshots-from-memory', exclude),
+
+  // Screenshot behavior
+  getScreenshotMode: () => ipcRenderer.invoke('get-screenshot-mode'),
+  setScreenshotMode: (mode) => ipcRenderer.invoke('set-screenshot-mode', mode),
+
+  // Session settings
+  getSessionSettings: () => ipcRenderer.invoke('get-session-settings'),
+  setAutoTitleSessions: (enabled) => ipcRenderer.invoke('set-auto-title-sessions', enabled),
+  generateSessionTitle: (assistantReply) => ipcRenderer.invoke('generate-session-title', assistantReply),
 
   // Display detection
   getDisplays: () => ipcRenderer.invoke('get-displays'),
@@ -112,6 +128,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleSessionSaved: (id) => ipcRenderer.invoke('toggle-session-saved', id),
   setSessionSaved: (id, isSaved) => ipcRenderer.invoke('set-session-saved', { id, isSaved }),
   searchSessions: (query) => ipcRenderer.invoke('search-sessions', query),
+
+  // Update checking
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
 
   // Cleanup listeners
   removeAllListeners: (channel) => {

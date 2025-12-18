@@ -60,6 +60,7 @@ export const REQUIRED_ICONS = {
   'search': 'Search Icon',
   'trash': 'Delete Icon',
   'save': 'Save Icon',
+  'pencil': 'Pencil Icon',
   'github': 'GitHub Icon',
   'x': 'X Icon',
   'website': 'Website Icon',

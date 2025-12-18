@@ -18,6 +18,12 @@ let currentStreamingMessageId = null // ID of currently streaming message
 let accumulatedText = '' // Accumulated text during streaming
 let isCollapsed = true // Overlay collapse state (starts collapsed)
 
+// Behavior settings (from Configuration)
+let screenshotMode = 'manual' // 'manual' | 'auto'
+let excludeScreenshotsFromMemory = true
+let autoTitleSessions = true
+let sessionAutoTitleApplied = false
+
 // DOM element references
 const messagesContainer = document.getElementById('messages-container')
 let chatWrapper = document.getElementById('chat-wrapper') // Use let for reassignment after new chat
@@ -131,6 +137,7 @@ async function loadSessionIntoChat(sessionId) {
   // Reset state
   messages.length = 0
   currentSessionId = session.id || sessionId
+  sessionAutoTitleApplied = true
 
   if (memoryManager) {
     memoryManager.clearConversation()
@@ -209,6 +216,71 @@ function measureCollapsedHeight() {
 }
 
 /**
+ * Load behavior settings from Configuration
+ */
+async function loadBehaviorSettings() {
+  try {
+    const [screenshotModeResult, excludeResult, sessionSettingsResult] = await Promise.all([
+      window.electronAPI.getScreenshotMode?.(),
+      window.electronAPI.getExcludeScreenshotsFromMemory?.(),
+      window.electronAPI.getSessionSettings?.()
+    ])
+
+    screenshotMode = screenshotModeResult?.success ? (screenshotModeResult.mode === 'auto' ? 'auto' : 'manual') : 'manual'
+    excludeScreenshotsFromMemory = excludeResult?.success ? excludeResult.exclude !== false : true
+    autoTitleSessions = sessionSettingsResult?.success ? sessionSettingsResult.settings?.autoTitleSessions !== false : true
+
+    // In auto mode, keep the image icon "toggled on" and make it informational.
+    if (screenshotBtn) {
+      const isAuto = screenshotMode === 'auto'
+      screenshotBtn.disabled = isAuto
+      screenshotBtn.title = isAuto ? 'Auto screenshot mode is enabled' : 'Capture Screenshot'
+
+      if (isAuto) {
+        screenshotBtn.classList.add('active')
+        screenshotBtn.classList.add('show-label')
+        isScreenshotActive = true
+
+        const label = document.getElementById('screenshot-label')
+        if (label) label.textContent = 'Using screen'
+      } else {
+        screenshotBtn.classList.remove('show-label')
+        const label = document.getElementById('screenshot-label')
+        if (label) label.textContent = ''
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load behavior settings:', error)
+  }
+}
+
+async function maybeAutoTitleSessionFromFirstReply(replyText) {
+  if (!autoTitleSessions) return
+  if (sessionAutoTitleApplied) return
+
+  const normalized = typeof replyText === 'string' ? replyText.trim() : ''
+  if (!normalized) return
+
+  // Only auto-title after the first assistant reply in a new session
+  const aiCount = messages.filter(m => m.type === 'ai').length
+  if (aiCount !== 1) return
+
+  try {
+    // Ensure session is persisted and has an id
+    await saveCurrentSession()
+    if (!currentSessionId) return
+
+    const titleResult = await window.electronAPI.generateSessionTitle(normalized)
+    if (!titleResult?.success || !titleResult.title) return
+
+    await window.electronAPI.renameSession(currentSessionId, titleResult.title)
+    sessionAutoTitleApplied = true
+  } catch (error) {
+    console.error('Failed to auto-title session:', error)
+  }
+}
+
+/**
  * Initialize the application
  */
 async function init() {
@@ -218,8 +290,17 @@ async function init() {
   memoryManager = new MemoryManager(historyLimit)
   console.log('MemoryManager initialized with limit:', historyLimit)
 
+  await loadBehaviorSettings()
+
   // Screenshot button - capture immediately and highlight icon
-  screenshotBtn.addEventListener('click', handleScreenshotCapture)
+  screenshotBtn.addEventListener('click', async () => {
+    if (screenshotMode === 'auto') {
+      showToast('Auto screenshot mode is enabled', 'info', 2000)
+      return
+    }
+
+    await handleScreenshotCapture()
+  })
 
   // Send button - send message with optional screenshot
   sendBtn.addEventListener('click', handleSendMessage)
@@ -297,6 +378,8 @@ async function init() {
     if (historyLimitResult.success && memoryManager) {
       memoryManager.updateHistoryLimit(historyLimitResult.limit)
     }
+
+    await loadBehaviorSettings()
   })
 
   // Streaming event handlers
@@ -306,6 +389,9 @@ async function init() {
 
   // Collapse toggle event handler (Ctrl+')
   window.electronAPI.onToggleCollapse(toggleCollapse)
+
+  // Screenshot capture hotkey (Ctrl+Shift+S)
+  window.electronAPI.onCaptureScreenshot(handleScreenshotCapture)
 
   // Initialize custom icons from directory
   await initIcons()
@@ -317,7 +403,14 @@ async function init() {
    insertIcon(hideBtn, 'minus', 'icon-svg')
    insertIcon(collapseBtn, 'collapse', 'icon-svg')
    insertIcon(newChatBtn, 'newchat', 'icon-svg')
-   insertIcon(screenshotBtn, 'camera', 'icon-svg')
+
+   const screenshotIcon = document.getElementById('screenshot-icon')
+   if (screenshotIcon) {
+     insertIcon(screenshotIcon, 'camera', 'icon-svg')
+   } else {
+     insertIcon(screenshotBtn, 'camera', 'icon-svg')
+   }
+
    insertIcon(sendBtn, 'send', 'icon-svg')
    insertIcon(scrollBottomBtn, 'arrow-down', 'icon-svg')
 
@@ -520,6 +613,19 @@ function showScreenshotChip(thumbnailBase64) {
  * Remove screenshot
  */
 function removeScreenshot() {
+  if (screenshotMode === 'auto') {
+    // In auto mode, the icon stays "toggled on".
+    capturedScreenshot = null
+    capturedThumbnail = null
+    isScreenshotActive = true
+    screenshotBtn.classList.add('active')
+    screenshotBtn.classList.add('show-label')
+    const label = document.getElementById('screenshot-label')
+    if (label) label.textContent = 'Using screen'
+    messageInput.placeholder = 'Ask about your screen or conversation, or ↩ for Assist'
+    return
+  }
+
   capturedScreenshot = null
   capturedThumbnail = null
   isScreenshotActive = false
@@ -548,8 +654,32 @@ async function handleSendMessage() {
 
   const text = messageInput.value.trim()
 
+  let sendScreenshot = capturedScreenshot
+  let sendHasScreenshot = isScreenshotActive
+
+  // Auto mode: capture a fresh screenshot for each message
+  if (screenshotMode === 'auto') {
+    sendScreenshot = null
+    sendHasScreenshot = false
+
+    // Avoid capturing screenshots for empty sends
+    if (text) {
+      try {
+        const captureResult = await window.electronAPI.captureScreen()
+        if (captureResult?.success) {
+          sendScreenshot = captureResult.base64
+          sendHasScreenshot = true
+        } else {
+          showToast('Failed to capture screenshot: ' + (captureResult?.error || 'Unknown error'), 'error', 3000)
+        }
+      } catch (error) {
+        showToast('Failed to capture screenshot: ' + error.message, 'error', 3000)
+      }
+    }
+  }
+
   // Don't send if both text and screenshot are empty
-  if (!text && !capturedScreenshot) return
+  if (!text && !sendScreenshot) return
 
   // Disable send button during processing
   sendBtn.disabled = true
@@ -558,7 +688,7 @@ async function handleSendMessage() {
   try {
     // Add user message to UI (if text exists, otherwise use 'Assist' as default)
     const messageText = text || 'Assist'
-    addMessage('user', messageText, isScreenshotActive)
+    addMessage('user', messageText, sendHasScreenshot)
 
     // Clear input immediately for better UX
     messageInput.value = ''
@@ -604,7 +734,7 @@ async function handleSendMessage() {
     }))
 
     console.log('Sending message to LLM...', { 
-      hasScreenshot: isScreenshotActive, 
+      hasScreenshot: sendHasScreenshot, 
       totalMessages: memoryManager ? memoryManager.messages.length : 0,
       sentMessages: conversationHistory.length,
       hasSummary: !!context.summary,
@@ -613,7 +743,7 @@ async function handleSendMessage() {
     
     const result = await window.electronAPI.sendMessage(
       promptText, 
-      capturedScreenshot, 
+      sendScreenshot, 
       conversationHistory,
       context.summary
     )
@@ -632,7 +762,19 @@ async function handleSendMessage() {
     showError('Error: ' + error.message)
   } finally {
     // Clear screenshot after sending
-    removeScreenshot()
+    if (screenshotMode === 'manual') {
+      removeScreenshot()
+    } else {
+      // Keep icon "toggled on" in auto mode
+      capturedScreenshot = null
+      capturedThumbnail = null
+      isScreenshotActive = true
+      screenshotBtn.classList.add('active')
+      screenshotBtn.classList.add('show-label')
+      const label = document.getElementById('screenshot-label')
+      if (label) label.textContent = 'Using screen'
+      messageInput.placeholder = 'Ask about your screen or conversation, or ↩ for Assist'
+    }
 
     // Re-enable input
     sendBtn.disabled = false
@@ -662,10 +804,15 @@ function handleMessageChunk(chunk) {
  * Handle streaming completion
  */
 function handleMessageComplete() {
+  const finishedText = accumulatedText
+
   if (currentStreamingMessageId) {
     // Finalize the message (remove cursor, store in history)
-    finalizeStreamingMessage(currentStreamingMessageId, accumulatedText)
+    finalizeStreamingMessage(currentStreamingMessageId, finishedText)
   }
+
+  // Auto-title sessions after the first assistant reply
+  maybeAutoTitleSessionFromFirstReply(finishedText)
 
   // Reset streaming state
   currentStreamingMessageId = null
@@ -727,8 +874,9 @@ function addMessage(type, text, hasScreenshot = false) {
   // Scroll to bottom and update gradients
   scrollToBottom()
 
-  // Store in message history (for UI)
-  messages.push({ id: generateMessageId(), type, text, hasScreenshot, timestamp: new Date() })
+  // Store in message history (for UI/session persistence)
+  const persistHasScreenshot = hasScreenshot && !(excludeScreenshotsFromMemory && type === 'user')
+  messages.push({ id: generateMessageId(), type, text, hasScreenshot: persistHasScreenshot, timestamp: new Date() })
 
   // Persist session after each message
   scheduleSessionSave()
@@ -1139,6 +1287,7 @@ function handleNewChat() {
 
   // Start a new persisted session
   currentSessionId = null
+  sessionAutoTitleApplied = false
   if (sessionSaveTimer) {
     clearTimeout(sessionSaveTimer)
     sessionSaveTimer = null
@@ -1164,8 +1313,19 @@ function handleNewChat() {
 
   // Reset screenshot state
   capturedScreenshot = null
-  screenshotBtn.classList.remove('active')
-  isScreenshotActive = false
+  if (screenshotMode === 'auto') {
+    screenshotBtn.classList.add('active')
+    screenshotBtn.classList.add('show-label')
+    isScreenshotActive = true
+    const label = document.getElementById('screenshot-label')
+    if (label) label.textContent = 'Using screen'
+  } else {
+    screenshotBtn.classList.remove('active')
+    screenshotBtn.classList.remove('show-label')
+    isScreenshotActive = false
+    const label = document.getElementById('screenshot-label')
+    if (label) label.textContent = ''
+  }
 
   // Clear input
   messageInput.value = ''

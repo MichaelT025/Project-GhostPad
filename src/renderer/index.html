@@ -399,7 +399,7 @@
       align-items: center;
       justify-content: space-between;
       gap: var(--space-8);
-      padding-top: var(--space-6);
+      padding-top: var(--space-8);
       border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
 
@@ -432,6 +432,29 @@
       padding: 0;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* Screenshot button can show text in auto mode */
+    #screenshot-btn {
+      gap: 6px;
+    }
+
+    #screenshot-btn .btn-label {
+      display: none;
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: currentColor;
+      white-space: nowrap;
+    }
+
+    #screenshot-btn.show-label {
+      width: auto;
+      padding: 0 10px;
+      justify-content: flex-start;
+    }
+
+    #screenshot-btn.show-label .btn-label {
+      display: inline;
     }
 
     .icon-btn-input:hover {
@@ -943,7 +966,8 @@
         <div class="input-controls">
           <div class="input-controls-left">
             <button id="screenshot-btn" class="icon-btn-input" title="Use Screen" aria-label="Use Screen">
-              <!-- Icon loaded from custom-icons/camera.svg -->
+              <span id="screenshot-icon" class="btn-icon" aria-hidden="true"></span>
+              <span id="screenshot-label" class="btn-label" aria-hidden="true"></span>
             </button>
             <select
               id="mode-dropdown-input"

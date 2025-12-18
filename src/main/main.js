@@ -177,6 +177,13 @@ function registerHotkeys() {
       mainWindow.webContents.send('toggle-collapse')
     }
   })
+
+  // Ctrl+Shift+S to capture screenshot
+  globalShortcut.register('CommandOrControl+Shift+S', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('capture-screenshot')
+    }
+  })
 }
 
 // App lifecycle events
@@ -396,6 +403,65 @@ Provide a clear, contextual summary:`
       success: false,
       error: error.message
     }
+  }
+})
+
+ipcMain.handle('generate-session-title', async (_event, assistantReply) => {
+  try {
+    const replyText = typeof assistantReply === 'string' ? assistantReply.trim() : ''
+    if (!replyText) {
+      return { success: false, error: 'Empty reply' }
+    }
+
+    const providerName = configService.getActiveProvider()
+    const apiKey = configService.getApiKey(providerName)
+
+    if (!isLocalProvider(providerName) && !apiKey) {
+      return { success: false, error: `No API key configured for ${providerName}` }
+    }
+
+    const config = configService.getProviderConfig(providerName)
+    const titleConfig = {
+      ...config,
+      systemPrompt: ''
+    }
+
+    const provider = LLMFactory.createProvider(providerName, apiKey, titleConfig)
+
+    const prompt = `Create a short session title (3-6 words) based on the assistant reply below.
+Rules:
+- Return ONLY the title
+- No quotes
+- No punctuation at the end
+- Title case is optional
+- Keep under 42 characters
+
+Assistant reply:
+${replyText}`
+
+    let raw = ''
+    await provider.streamResponse(prompt, null, [], (chunk) => {
+      raw += chunk
+    })
+
+    let title = (raw || '').trim()
+    title = title.replace(/^['"“”‘’]+|['"“”‘’]+$/g, '').trim()
+    title = title.replace(/\s+/g, ' ')
+    title = title.replace(/[\.!?]+$/g, '').trim()
+
+    const maxLen = 42
+    if (title.length > maxLen) {
+      title = title.slice(0, maxLen).trimEnd()
+    }
+
+    if (!title) {
+      return { success: false, error: 'Failed to generate title' }
+    }
+
+    return { success: true, title }
+  } catch (error) {
+    console.error('Failed to generate session title:', error)
+    return { success: false, error: error.message }
   }
 })
 
@@ -765,6 +831,81 @@ ipcMain.handle('set-summarization-enabled', async (_event, enabled) => {
   }
 })
 
+ipcMain.handle('get-exclude-screenshots-from-memory', async () => {
+  try {
+    const exclude = configService.getExcludeScreenshotsFromMemory()
+    return { success: true, exclude }
+  } catch (error) {
+    console.error('Failed to get exclude screenshots setting:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('set-exclude-screenshots-from-memory', async (_event, exclude) => {
+  try {
+    configService.setExcludeScreenshotsFromMemory(exclude)
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('config-changed')
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to set exclude screenshots setting:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('get-screenshot-mode', async () => {
+  try {
+    const mode = configService.getScreenshotMode()
+    return { success: true, mode }
+  } catch (error) {
+    console.error('Failed to get screenshot mode:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('set-screenshot-mode', async (_event, mode) => {
+  try {
+    configService.setScreenshotMode(mode)
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('config-changed')
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to set screenshot mode:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('get-session-settings', async () => {
+  try {
+    const settings = configService.getSessionSettings()
+    return { success: true, settings }
+  } catch (error) {
+    console.error('Failed to get session settings:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+ipcMain.handle('set-auto-title-sessions', async (_event, enabled) => {
+  try {
+    configService.setAutoTitleSessions(enabled)
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('config-changed')
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to set auto title sessions:', error)
+    return { success: false, error: error.message }
+  }
+})
+
 // Model refresh IPC handlers
 ipcMain.handle('refresh-models', async (_event, providerId) => {
   try {
@@ -1015,5 +1156,98 @@ ipcMain.handle('search-sessions', async (_event, query) => {
   } catch (error) {
     console.error('Failed to search sessions:', error)
     return { success: false, error: error.message, sessions: [] }
+  }
+})
+
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    const https = require('https')
+    const currentVersion = app.getVersion()
+
+    return new Promise((resolve) => {
+      const options = {
+        hostname: 'api.github.com',
+        path: '/repos/project-ghostpad/ghostpad/releases/latest',
+        method: 'GET',
+        headers: {
+          'User-Agent': 'GhostPad-App',
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      }
+
+      const req = https.request(options, (res) => {
+        let data = ''
+
+        res.on('data', (chunk) => {
+          data += chunk
+        })
+
+        res.on('end', () => {
+          try {
+            if (res.statusCode === 200) {
+              const release = JSON.parse(data)
+              const latestVersion = release.tag_name.replace('v', '')
+
+              // Simple version comparison (assumes semantic versioning)
+              const currentParts = currentVersion.split('.').map(Number)
+              const latestParts = latestVersion.split('.').map(Number)
+
+              let updateAvailable = false
+              for (let i = 0; i < Math.max(currentParts.length, latestParts.length); i++) {
+                const current = currentParts[i] || 0
+                const latest = latestParts[i] || 0
+                if (latest > current) {
+                  updateAvailable = true
+                  break
+                } else if (current > latest) {
+                  break
+                }
+              }
+
+              resolve({
+                updateAvailable,
+                currentVersion,
+                latestVersion,
+                releaseNotes: release.body,
+                downloadUrl: release.html_url
+              })
+            } else {
+              resolve({
+                updateAvailable: false,
+                error: `GitHub API returned status ${res.statusCode}`
+              })
+            }
+          } catch (error) {
+            resolve({
+              updateAvailable: false,
+              error: 'Failed to parse GitHub response'
+            })
+          }
+        })
+      })
+
+      req.on('error', (error) => {
+        resolve({
+          updateAvailable: false,
+          error: `Network error: ${error.message}`
+        })
+      })
+
+      req.setTimeout(10000, () => {
+        req.destroy()
+        resolve({
+          updateAvailable: false,
+          error: 'Request timeout'
+        })
+      })
+
+      req.end()
+    })
+  } catch (error) {
+    console.error('Failed to check for updates:', error)
+    return {
+      updateAvailable: false,
+      error: error.message
+    }
   }
 })

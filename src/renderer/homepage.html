@@ -512,6 +512,7 @@
       justify-content: flex-end;
     }
 
+    .rename-btn,
     .delete-btn {
       display: flex;
       align-items: center;
@@ -525,35 +526,83 @@
       cursor: pointer;
       transition: all var(--duration-quick) var(--easing);
       opacity: 0; /* Hidden by default */
+      user-select: none;
+      padding: 0;
     }
 
-    .session-card:hover .delete-btn {
+    .rename-btn svg,
+    .delete-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    .session-card:hover .rename-btn {
       opacity: 1;
-      background: var(--danger);
-      border-color: transparent;
-      color: white;
-      box-shadow: var(--shadow-elev-2);
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-primary);
     }
 
-
-    .session-card:hover .delete-btn {
-      opacity: 1;
-      background: var(--danger);
-      border-color: transparent;
-      color: #fff;
+    .session-card:hover .rename-btn:hover {
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(255, 255, 255, 0.18);
     }
-
 
     .session-card:hover .delete-btn {
       opacity: 1;
       background: var(--danger);
       border-color: rgba(0, 0, 0, 0.2);
       color: white;
+      box-shadow: var(--shadow-elev-2);
     }
 
-
     .session-card:hover .timestamp {
-      display: none; /* Hide timestamp on hover to show delete */
+      display: none; /* Make room for actions */
+    }
+
+    /* Rename modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      -webkit-app-region: no-drag;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(520px, calc(100vw - 48px));
+      background: rgba(18, 18, 18, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-overlay);
+      padding: var(--space-16);
+    }
+
+    .modal h2 {
+      font-size: var(--font-size-h2);
+      margin: 0 0 var(--space-8) 0;
+    }
+
+    .modal p {
+      color: var(--text-tertiary);
+      margin: 0 0 var(--space-12) 0;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-8);
+      margin-top: var(--space-12);
     }
 
     /* Checkbox Styles */
@@ -645,15 +694,19 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 2px 16px;
-      background: rgba(255, 255, 255, 0.03);
+      gap: var(--space-16);
+      padding: var(--space-12) var(--space-16);
+      background: rgba(255, 255, 255, 0.02);
       border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 8px;
-      transition: background 0.2s;
+      border-radius: var(--radius-lg);
+      transition: all var(--duration-quick) var(--easing);
     }
 
     .shortcut-item:hover {
       background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-elev-1);
     }
 
     .shortcut-label {
@@ -755,6 +808,58 @@
       gap: var(--space-8);
       align-items: center;
       flex-wrap: wrap;
+    }
+
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      transition: all var(--duration-quick) var(--easing);
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 999px;
+      transition: all var(--duration-quick) var(--easing);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: rgba(182, 179, 180, 0.26);
+      border-color: rgba(182, 179, 180, 0.36);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translate(20px, -50%);
+      background: var(--accent-strong);
+    }
+
+    .toggle-switch input:focus-visible + .toggle-slider {
+      box-shadow: var(--focus-ring);
     }
 
     .mini-btn {
@@ -876,6 +981,10 @@
           <a href="#" class="social-link" data-icon="website" title="Website" target="_blank"></a>
         </div>
         <div class="footer-actions">
+          <button id="check-update" class="footer-btn" type="button">
+            <span class="nav-icon" data-icon="update"></span>
+            Check for update
+          </button>
           <button id="report-bug" class="footer-btn" type="button">
             <span class="nav-icon" data-icon="bug"></span>
             Report a bug
@@ -987,6 +1096,17 @@
           </div>
 
           <div class="shortcut-item">
+            <span class="shortcut-label">Capture screenshot</span>
+            <div class="shortcut-keys">
+              <span class="key-badge">Ctrl</span>
+              <span style="color: var(--text-tertiary); align-self: center;">+</span>
+              <span class="key-badge">Shift</span>
+              <span style="color: var(--text-tertiary); align-self: center;">+</span>
+              <span class="key-badge">S</span>
+            </div>
+          </div>
+
+          <div class="shortcut-item">
             <span class="shortcut-label">Send message</span>
             <div class="shortcut-keys">
               <span class="key-badge">Enter</span>
@@ -997,6 +1117,22 @@
     </main>
   </div>
 
+  <div id="rename-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Rename conversation">
+    <div class="modal">
+      <h2>Rename conversation</h2>
+      <p>Enter a new title.</p>
+      <div class="form-field" style="min-width: 0;">
+        <label for="rename-input">Title</label>
+        <input id="rename-input" class="text-input" type="text" autocomplete="off" />
+        <div id="rename-status" class="status-line"></div>
+      </div>
+      <div class="modal-actions">
+        <button id="rename-cancel" class="mini-btn" type="button">Cancel</button>
+        <button id="rename-save" class="mini-btn primary" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="homepage.js"></script>
-</body>
-</html>
+ </body>
+ </html>
