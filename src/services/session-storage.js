@@ -65,8 +65,95 @@ class SessionStorage {
       throw new Error('userDataPath is required for SessionStorage')
     }
 
-    this.sessionsDir = path.join(userDataPath, 'sessions')
-    this.sessionAssetsRoot = path.join(this.sessionsDir, '_assets')
+    this.userDataPath = userDataPath
+    this.dataDir = path.join(userDataPath, 'data')
+    
+    // Ensure data directory exists
+    if (!require('fs').existsSync(this.dataDir)) {
+      try {
+        require('fs').mkdirSync(this.dataDir, { recursive: true })
+      } catch (e) {
+        console.error('Failed to create data directory:', e)
+      }
+    }
+
+    this.sessionsDir = path.join(this.dataDir, 'sessions')
+    this.screenshotsDir = path.join(this.dataDir, 'screenshots')
+    this.sessionAssetsRoot = path.join(this.sessionsDir, '_assets') // Kept for legacy ref support if needed, but not used for new files
+
+    // Perform migration if needed
+    this.migrateDataStructure().catch(err => console.error('Data migration failed:', err))
+  }
+
+  async migrateDataStructure() {
+    const oldSessionsDir = path.join(this.userDataPath, 'sessions')
+    
+    // If old sessions dir exists and new sessions dir is empty/doesn't exist
+    try {
+      const fsSync = require('fs')
+      
+      // Check if migration is needed (old dir exists)
+      if (!fsSync.existsSync(oldSessionsDir)) return
+
+      // Ensure new dirs exist
+      await fs.mkdir(this.sessionsDir, { recursive: true })
+      await fs.mkdir(this.screenshotsDir, { recursive: true })
+
+      console.log('Migrating sessions to new data structure...')
+
+      // 1. Move all .json session files
+      const files = await fs.readdir(oldSessionsDir)
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const oldPath = path.join(oldSessionsDir, file)
+          const newPath = path.join(this.sessionsDir, file)
+          try {
+             if (!fsSync.existsSync(newPath)) {
+               await fs.rename(oldPath, newPath)
+             }
+          } catch (e) {
+            console.error(`Failed to move session file ${file}:`, e)
+          }
+        }
+      }
+
+      // 2. Move screenshots from _assets
+      const oldAssetsDir = path.join(oldSessionsDir, '_assets')
+      if (fsSync.existsSync(oldAssetsDir)) {
+        const sessionAssetDirs = await fs.readdir(oldAssetsDir)
+        for (const sessionId of sessionAssetDirs) {
+          const sessionScreenshotsDir = path.join(oldAssetsDir, sessionId, 'screenshots')
+          
+          if (fsSync.existsSync(sessionScreenshotsDir)) {
+            // Target dir: data/screenshots/<sessionId>
+            const targetDir = path.join(this.screenshotsDir, sessionId)
+            await fs.mkdir(targetDir, { recursive: true })
+
+            const images = await fs.readdir(sessionScreenshotsDir)
+            for (const img of images) {
+              const oldImgPath = path.join(sessionScreenshotsDir, img)
+              const newImgPath = path.join(targetDir, img)
+              try {
+                if (!fsSync.existsSync(newImgPath)) {
+                  await fs.rename(oldImgPath, newImgPath)
+                }
+              } catch (e) {
+                console.error(`Failed to move screenshot ${img}:`, e)
+              }
+            }
+          }
+        }
+      }
+      
+      console.log('Migration completed.')
+      
+      // Optional: Remove old directory if empty? 
+      // Safe to leave it for now to prevent data loss if something went wrong.
+      // But we can try to cleanup if it's empty.
+      
+    } catch (error) {
+      console.error('Error during data structure migration:', error)
+    }
   }
 
   sessionPathForId(id) {
@@ -83,21 +170,15 @@ class SessionStorage {
     return path.join(this.sessionsDir, `${safeId}.json`)
   }
 
-  sessionAssetsDirForId(id) {
-    if (!id || typeof id !== 'string') {
-      throw new Error('Session id is required')
-    }
-
+  // Updated to point to new flat structure: data/screenshots/<sessionId>
+  screenshotDirForSession(id) {
     const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '')
-    if (!safeId) {
-      throw new Error('Invalid session id')
-    }
-
-    return path.join(this.sessionAssetsRoot, safeId)
+    return path.join(this.screenshotsDir, safeId)
   }
 
-  screenshotDirForSession(id) {
-    return path.join(this.sessionAssetsDirForId(id), 'screenshots')
+  // Deprecated helper, kept just in case but ideally unused
+  sessionAssetsDirForId(id) {
+    return this.screenshotDirForSession(id)
   }
 
   async writeScreenshot(sessionId, messageId, base64) {
@@ -112,21 +193,36 @@ class SessionStorage {
 
     await fs.writeFile(filePath, buffer)
 
-    // Store path relative to the session assets root.
-    return path.join('screenshots', filename)
+    // Store simple filename or relative path. 
+    // We'll store just the filename or "screenshots/filename" for compat?
+    // Old format was "screenshots/filename.jpg" (relative to assets/<id>)
+    // New structure is flat per session. 
+    // Let's store "filename.jpg" and handle it in read.
+    // BUT to keep compat with existing JSONs that might say "screenshots/foo.jpg",
+    // we should normalize during read.
+    // Let's store just the filename now to be cleaner.
+    return filename
   }
 
   async readScreenshotBase64(sessionId, screenshotPath) {
-    const rel = safeText(screenshotPath)
+    let rel = safeText(screenshotPath)
     if (!rel) return ''
     if (rel.includes('..') || path.isAbsolute(rel)) return ''
 
-    const fullPath = path.join(this.sessionAssetsDirForId(sessionId), rel)
+    // Normalize legacy paths: "screenshots/foo.jpg" -> "foo.jpg"
+    if (rel.startsWith('screenshots') && (rel.includes('/') || rel.includes('\\'))) {
+        rel = path.basename(rel)
+    }
+
+    // Look in new location
+    const fullPath = path.join(this.screenshotDirForSession(sessionId), rel)
 
     try {
       const data = await fs.readFile(fullPath)
       return data.toString('base64')
     } catch {
+      // Fallback: try old location if migration failed or legacy path issues?
+      // No, we rely on migration.
       return ''
     }
   }
@@ -281,7 +377,8 @@ class SessionStorage {
     await fs.rm(filePath, { force: true })
 
     try {
-      const assetsDir = this.sessionAssetsDirForId(id)
+      // Delete the session's screenshot folder
+      const assetsDir = this.screenshotDirForSession(id)
       await fs.rm(assetsDir, { recursive: true, force: true })
     } catch {
       // ignore

@@ -115,6 +115,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openSettings: () => ipcRenderer.invoke('open-settings'),
   openModelSwitcher: () => ipcRenderer.invoke('open-model-switcher'),
   closeModelSwitcher: () => ipcRenderer.invoke('close-model-switcher'),
+  openDataFolder: () => ipcRenderer.invoke('open-data-folder'),
   hideWindow: () => ipcRenderer.invoke('hide-window'),
   deleteAllData: () => ipcRenderer.invoke('delete-all-data'),
   setCollapsed: (collapsed, height) => ipcRenderer.send('set-collapsed', { collapsed, height }),

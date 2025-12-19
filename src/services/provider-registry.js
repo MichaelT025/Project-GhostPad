@@ -148,7 +148,30 @@ function initProvidersPath(userDataPath) {
     return
   }
 
-  providersPath = path.join(userDataPath, 'shade-providers.json')
+  const dataDir = path.join(userDataPath, 'data')
+  if (!fs.existsSync(dataDir)) {
+    try {
+      fs.mkdirSync(dataDir, { recursive: true })
+    } catch (e) {
+      console.error('Failed to create data directory:', e)
+    }
+  }
+
+  providersPath = path.join(dataDir, 'providers.json')
+  
+  // Migration: Check for old file in root
+  const oldPath = path.join(userDataPath, 'shade-providers.json')
+  if (fs.existsSync(oldPath) && !fs.existsSync(providersPath)) {
+    try {
+      console.log('Migrating providers file to data directory...')
+      fs.renameSync(oldPath, providersPath)
+    } catch (e) {
+      console.error('Failed to migrate providers file:', e)
+      // Fallback to reading old path if move failed
+      providersPath = oldPath
+    }
+  }
+
   loadProviders()
 }
 

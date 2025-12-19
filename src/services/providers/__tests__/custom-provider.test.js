@@ -51,4 +51,18 @@ describe('CustomProvider', () => {
     expect(modelsListMock).toHaveBeenCalledTimes(1)
     expect(chatCreateMock).toHaveBeenCalledTimes(1)
   })
+
+  test('validateApiKey returns true for local provider with empty key', async () => {
+    // Simulate local provider (Ollama/LM Studio) where no key is needed
+    // models.list should succeed
+    modelsListMock.mockResolvedValue({ data: [] })
+
+    const provider = new CustomProvider('', { model: 'llama2', baseUrl: 'http://localhost:11434/v1' })
+    provider.client = { models: { list: modelsListMock }, chat: { completions: { create: chatCreateMock } } }
+
+    const isValid = await provider.validateApiKey()
+
+    expect(isValid).toBe(true)
+    expect(modelsListMock).toHaveBeenCalled()
+  })
 })

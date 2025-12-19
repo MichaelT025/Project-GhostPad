@@ -705,6 +705,113 @@
       display: flex;
     }
 
+    /* First-run full-page view (main panel only) */
+    .first-run-root {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-32);
+      overflow: auto;
+    }
+
+    .first-run-card {
+      width: min(720px, 100%);
+      text-align: center;
+    }
+
+    .first-run-card h1 {
+      font-size: 32px;
+      letter-spacing: -0.5px;
+      margin-bottom: var(--space-12);
+      color: var(--text-primary);
+    }
+
+    .first-run-card p {
+      font-size: 15px;
+      line-height: 1.6;
+      margin: 0 auto var(--space-24);
+      color: var(--text-secondary);
+      max-width: 560px;
+    }
+
+    .first-run-panel {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-lg);
+      padding: var(--space-24);
+      margin-bottom: var(--space-32);
+      text-align: left;
+    }
+
+    .first-run-panel h3 {
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: var(--space-20);
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .first-run-option {
+      display: flex;
+      gap: var(--space-16);
+      margin-bottom: var(--space-20);
+    }
+
+    .first-run-option:last-child {
+      margin-bottom: 0;
+    }
+
+    .first-run-option-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--accent);
+    }
+
+    .first-run-option-content {
+      flex: 1;
+    }
+
+    .first-run-option-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .first-run-option-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .first-run-option-tags {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .first-run-tag {
+      font-size: 10px;
+      padding: 2px 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      color: var(--text-tertiary);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
     /* Shortcuts view */
     .shortcuts-list {
       flex: 1;
@@ -1149,7 +1256,7 @@
     <aside class="sidebar">
       <div>
         <div class="brand">
-          <img src="assets/icons/main_icon/appicon.png" alt="Shade Logo" class="app-logo" />
+          <img src="../../build/appicon.png" alt="Shade Logo" class="app-logo" />
           <div class="brand-text">
             <div class="brand-name">Shade</div>
             <div class="version-text">v0.1.0</div>
@@ -1208,6 +1315,13 @@
           <button id="dashboard-close" class="control-btn close" type="button" title="Close">
             <span class="nav-icon" data-icon="close"></span>
           </button>
+        </div>
+      </div>
+
+      <!-- First Run View -->
+      <div id="view-first-run" class="view-container">
+        <div class="first-run-root" aria-label="Welcome">
+          <div id="first-run-content" class="first-run-card"></div>
         </div>
       </div>
 

@@ -309,17 +309,18 @@
       align-items: center;
       justify-content: center;
       height: 100%;
-      opacity: 0.4;
     }
 
     .empty-state h2 {
       font-size: 18px;
       font-weight: 500;
       margin-bottom: 8px;
+      opacity: 0.9;
     }
 
     .empty-state p {
       font-size: 13px;
+      opacity: 0.7;
     }
 
     /* Scroll to bottom button */
@@ -954,7 +955,7 @@
       <div class="title-bar-left">
         <!-- Dashboard Button -->
         <button id="home-btn" class="icon-btn" title="Dashboard" aria-label="Open Dashboard">
-          <img class="app-icon" src="assets/icons/main_icon/appicon.png" alt="Shade" />
+          <img class="app-icon" src="../../build/appicon.png" alt="Shade" />
         </button>
       </div>
 
@@ -983,6 +984,7 @@
     <div id="messages-container" class="messages-container">
       <div class="chat-wrapper" id="chat-wrapper">
         <div class="empty-state">
+          <img src="../../build/appicon.png" alt="Shade Logo" class="welcome-logo" />
           <h2>Welcome to Shade</h2>
           <p>Capture your screen and ask questions</p>
         </div>

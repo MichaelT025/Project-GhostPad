@@ -81,36 +81,36 @@ function createMainWindow() {
   // mainWindow.webContents.openDevTools()
 
   // Track both expanded and collapsed bounds so resizing in either state is preserved
-  mainWindow.on('resize', () => {
+  // Synchronize x, y, and width across both states whenever one is moved or resized
+  const syncBounds = () => {
     if (!mainWindow) return
-
     const currentBounds = mainWindow.getBounds()
+
     if (overlayIsCollapsed) {
       overlayCollapsedBounds = currentBounds
+      if (overlayExpandedBounds) {
+        overlayExpandedBounds = {
+          ...overlayExpandedBounds,
+          x: currentBounds.x,
+          y: currentBounds.y,
+          width: currentBounds.width
+        }
+      }
     } else {
       overlayExpandedBounds = currentBounds
-    }
-  })
-
-  // Track position changes for both states
-  mainWindow.on('move', () => {
-    if (!mainWindow) return
-
-    const currentBounds = mainWindow.getBounds()
-    if (overlayIsCollapsed) {
       if (overlayCollapsedBounds) {
-        overlayCollapsedBounds = { ...overlayCollapsedBounds, x: currentBounds.x, y: currentBounds.y }
-      } else {
-        overlayCollapsedBounds = currentBounds
-      }
-    } else {
-      if (overlayExpandedBounds) {
-        overlayExpandedBounds = { ...overlayExpandedBounds, x: currentBounds.x, y: currentBounds.y }
-      } else {
-        overlayExpandedBounds = currentBounds
+        overlayCollapsedBounds = {
+          ...overlayCollapsedBounds,
+          x: currentBounds.x,
+          y: currentBounds.y,
+          width: currentBounds.width
+        }
       }
     }
-  })
+  }
+
+  mainWindow.on('resize', syncBounds)
+  mainWindow.on('move', syncBounds)
 
   // Handle window closed
   mainWindow.on('closed', () => {
@@ -1328,6 +1328,25 @@ ipcMain.handle('check-model-cache-stale', async (_event, providerId) => {
 // Quit application
 ipcMain.handle('quit-app', async () => {
   app.quit()
+})
+
+ipcMain.handle('open-data-folder', async () => {
+  try {
+    const { shell } = require('electron')
+    const userDataPath = app.getPath('userData')
+    const dataPath = path.join(userDataPath, 'data')
+    
+    // Check if data folder exists, if not fall back to userData
+    const targetPath = (await fs.stat(dataPath).catch(() => false)) 
+      ? dataPath 
+      : userDataPath
+      
+    await shell.openPath(targetPath)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to open data folder:', error)
+    return { success: false, error: error.message }
+  }
 })
 
 // Load custom icons from directory

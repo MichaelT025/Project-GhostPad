@@ -1588,6 +1588,7 @@ function handleNewChat() {
   messagesContainer.innerHTML = `
     <div class="chat-wrapper" id="chat-wrapper">
       <div class="empty-state">
+        <img src="../../build/appicon.png" alt="Shade Logo" class="welcome-logo" />
         <h2>Welcome to Shade</h2>
         <p>Capture your screen and ask questions</p>
       </div>

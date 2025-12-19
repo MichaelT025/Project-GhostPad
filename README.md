@@ -88,7 +88,8 @@ npm run dev
 ### Tips
 
 - Drag the title bar to reposition
-- Resize by dragging edges (when expanded)
+- Resize by dragging edges (Both states are resizable)
+- **State Memory**: Window size and position are remembered and synced between collapsed and expanded modes (width/position are shared, heights are independent).
 - Screenshots persist until you start a new chat
 - Use the Dashboard to manage sessions and configuration
 
@@ -155,6 +156,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, testing/build commands, 
 - [x] Model selection dropdown + refresh
 - [x] System prompt modes (built-in + editable)
 - [x] Unit test suite (Vitest)
+- [x] Model switcher (keyboard shortcut `Ctrl+M`)
 
 ### V1.1
 - [ ] macOS support

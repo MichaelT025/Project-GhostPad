@@ -2,7 +2,7 @@
 # Shade
 
 **Version:** 1.0
-**Last Updated:** December 16, 2024
+**Last Updated:** December 19, 2024
 **Author:** Product Team
 **Status:** Draft for V1 Release
 
@@ -273,20 +273,22 @@ Shade is an invisible assistant that:
 
 **Collapsed State:**
 - Shows only: Settings button, input field, send button
-- Dimensions: ~500px wide, ~60px tall
+- Dimensions: ~500px wide, ~136px tall (variable)
+- Resizable: Yes (Min width 450px, Min height 100px)
 - User can type and send messages
 - Default state on app startup
 
 **Expanded State:**
 - Shows: Title bar, chat messages, input field
-- Dimensions: User-resizable (min 400x300, max screen size)
+- Dimensions: Default 500x450 (Resizable: Min 450x400, Max 1000x1000)
 - Displays conversation history
 - Triggered when first message is sent
 
 **State Transitions:**
 - Collapsed → Expanded: First message sent in session
-- Expanded → Collapsed: Manual toggle (keyboard shortcut TBD)
+- Expanded → Collapsed: Manual toggle (Ctrl+')
 - On new session start: Returns to collapsed
+- **Synchronization:** Moving or resizing (width) the window in one state automatically synchronizes it with the other to ensure a seamless transition without position "snapping."
 
 **Keyboard Shortcuts:**
 - `Ctrl+/`: Toggle overlay visibility (show/hide)
@@ -314,9 +316,10 @@ Shade is an invisible assistant that:
 - Full settings in separate window/panel
 
 **Storage:**
-- Local storage (JSON files or SQLite in userData directory)
-- Auto-cleanup of sessions older than 30 days
-- Session data: messages, timestamps, provider used, screenshots (compressed)
+- Local storage (JSON files in `userData/data/` directory)
+- Auto-cleanup of *unsaved* sessions older than 30 days
+- Session data: messages, timestamps, provider used, screenshots (flat folder structure)
+- API Keys: Encrypted using `electron.safeStorage` in `config.json`
 
 ### 6.3 Provider Registry System
 
@@ -549,31 +552,27 @@ Session saved to local storage
 // Session object
 {
   id: "uuid-v4",
-  title: "Explaining Neural Networks",  // Auto-generated or user-set
-  createdAt: "2024-12-16T10:30:00Z",
-  updatedAt: "2024-12-16T11:45:00Z",
-  provider: "gemini",
-  model: "gemini-2.5-flash",
-  messages: [
-    {
-      id: "msg-uuid",
-      type: "user",
-      text: "Explain these notes to me",
-      hasScreenshot: true,
-      timestamp: "2024-12-16T10:30:00Z"
-    },
-    {
-      id: "msg-uuid",
-      type: "ai",
-      text: "Based on the notes shown...",
-      timestamp: "2024-12-16T10:30:15Z"
-    }
-  ],
-  screenshots: {
-    "msg-uuid": "base64-compressed-image"  // Stored separately for efficiency
-  }
+// ... (rest of example)
 }
 ```
+
+### 7.6 Data Hierarchy & Security
+
+**Directory Structure:**
+All user data is consolidated in `%APPDATA%/Shade/data/` (Windows) or equivalent.
+```text
+userData/
+  data/
+    ├── sessions/       # Chat history (.json)
+    ├── screenshots/    # Images per session (<sessionId>/img.jpg)
+    ├── config.json     # Settings & Encrypted API keys
+    └── providers.json  # Provider metadata
+```
+
+**Security:**
+- **API Keys**: Stored in `config.json` encrypted via `electron.safeStorage` (OS-level encryption).
+- **Access**: Users can open the data folder via "Open Data Folder" button in Settings.
+- **Migration**: Automatic migration from legacy root-level storage to `data/` folder on startup.
 
 ---
 
@@ -795,6 +794,8 @@ Session saved to local storage
 | Session Title Generation | AI-generated | 2024-12-16 |
 | Collapse Shortcut | `Ctrl+'` | 2024-12-16 |
 | Memory Limit Number | 30 messages | 2024-12-16 |
+| Window Resizability | Min 450x400 (Exp), 450x100 (Col) | 2025-12-19 |
+| State Sync | Position/Width synced across Col/Exp | 2025-12-19 |
 | Cloud Sync | Discuss after V1 | 2024-12-16 |
 | Mobile Apps | Not in foreseeable future | 2024-12-16 |
 | macOS/Linux | Target both by V1.1 (macOS priority) | 2024-12-16 |
@@ -827,6 +828,7 @@ Session saved to local storage
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-12-16 | Initial PRD creation |
+| 1.1 | 2025-12-19 | Updated storage architecture (Data consolidation, safeStorage), added "Open Data Folder" feature |
 
 ---
 

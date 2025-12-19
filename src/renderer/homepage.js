@@ -161,6 +161,7 @@ async function handleRenameSession(id) {
 }
 
 let showingSaved = false
+let isFirstRunMode = false
 
 async function handleToggleSaved(id) {
   const result = await window.electronAPI.toggleSessionSaved(id)
@@ -190,9 +191,9 @@ function renderEmptyState(container) {
     <div class="empty">
       <h2>No conversations yet</h2>
       <p>Start a new chat to see it here. Tip: Press <code>Ctrl+R</code> to start a new chat from anywhere.</p>
-      <button id="empty-new-chat" class="new-chat-btn" type="button" style="max-width: 240px; margin-top: var(--space-8);">
+      <button id="empty-new-chat" class="action-btn primary" type="button" style="width: 200px; margin-top: var(--space-12);">
         <span class="nav-icon" data-icon="newchat"></span>
-        Start New Chat
+        New chat
       </button>
     </div>
   `
@@ -490,6 +491,13 @@ async function loadSessions(query = '') {
   const container = document.getElementById('content')
   if (!container) return
 
+  // Prevent loading sessions if we are in first-run mode
+  const isFirstRun = await checkFirstRunState()
+  if (isFirstRun) {
+    showFirstRunExperience()
+    return
+  }
+
   const trimmed = (query || '').trim()
   let result = trimmed
     ? await window.electronAPI.searchSessions(trimmed)
@@ -779,6 +787,23 @@ function renderConfig(container, state) {
               <span class="toggle-slider"></span>
             </label>
             <div id="config-exclude-screenshots-msg" class="helper-text" style="margin-top: 0;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-card">
+      <h2>Data Management</h2>
+      <p>Access your local data files.</p>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Local Data Folder</label>
+          <div class="inline-actions">
+            <button id="config-open-data" class="mini-btn" type="button">
+              <span class="nav-icon" data-icon="files" style="margin-right: 6px;"></span>
+              Open Data Folder
+            </button>
+            <div class="helper-text" style="margin-top: 0;">Contains your sessions, screenshots, and config (including encrypted API keys).</div>
           </div>
         </div>
       </div>
@@ -1501,6 +1526,7 @@ async function initConfigurationView() {
   const screenshotModeMsg = container.querySelector('#config-screenshot-mode-msg')
   const excludeScreenshotsToggle = container.querySelector('#config-exclude-screenshots')
   const excludeScreenshotsMsg = container.querySelector('#config-exclude-screenshots-msg')
+  const openDataBtn = container.querySelector('#config-open-data')
 
   const setAutoTitleMsg = (enabled) => {
     if (!autoTitleMsg) return
@@ -1627,6 +1653,10 @@ async function initConfigurationView() {
     } catch (error) {
       console.error('Failed to update exclude screenshots setting:', error)
     }
+  })
+
+  openDataBtn?.addEventListener('click', () => {
+    window.electronAPI.openDataFolder?.().catch(console.error)
   })
 
   const autoTestKey = async () => {
@@ -1774,12 +1804,20 @@ function wireNavigation() {
   const navShortcuts = document.getElementById('nav-shortcuts')
 
   if (navSessions) {
-    navSessions.addEventListener('click', () => {
+    navSessions.addEventListener('click', async () => {
+      // If the user hasn't configured providers yet, keep them on the welcome screen.
+      const isFirstRun = await checkFirstRunState()
+      if (isFirstRun) {
+        showFirstRunExperience()
+        return
+      }
+
       navSessions.classList.add('active')
       navModes?.classList.remove('active')
       navConfiguration?.classList.remove('active')
       navShortcuts?.classList.remove('active')
       showView('view-sessions')
+      loadSessions().catch(console.error)
     })
   }
 
@@ -1820,12 +1858,143 @@ function wireNavigation() {
   }
 }
 
+async function checkFirstRunState() {
+  try {
+    // 1. Check if we have any sessions at all
+    const sessionsResult = await window.electronAPI.getAllSessions()
+    const sessions = sessionsResult?.success ? (sessionsResult.sessions || []) : []
+    if (sessions.length > 0) {
+      return false // User has history, definitely not first run
+    }
+
+    // 2. Check for configured cloud providers
+    const providersResult = await window.electronAPI.getAllProvidersMeta()
+    if (!providersResult?.success) return false
+
+    const providers = normalizeProvidersMeta(providersResult.providers)
+    
+    for (const provider of providers) {
+      // Skip local providers for this check as we want to welcome the user 
+      // if they haven't set up cloud keys yet and have no sessions.
+      if (provider.id === 'ollama' || provider.id === 'lm-studio') {
+        continue
+      }
+      
+      const keyResult = await window.electronAPI.getApiKey(provider.id)
+      if (keyResult?.success && keyResult.apiKey && keyResult.apiKey.length > 0) {
+        return false // Found a configured cloud provider
+      }
+    }
+    
+    // No sessions AND no cloud keys = Show welcome screen
+    return true
+  } catch (error) {
+    console.error('Failed to check first-run state:', error)
+    return false
+  }
+}
+
+function showFirstRunExperience() {
+  // Ensure the welcome screen is visible even if user is on another tab
+  const navSessions = document.getElementById('nav-sessions')
+  const navConfiguration = document.getElementById('nav-configuration')
+  const navModes = document.getElementById('nav-modes')
+  const navShortcuts = document.getElementById('nav-shortcuts')
+
+  navSessions?.classList.add('active')
+  navConfiguration?.classList.remove('active')
+  navModes?.classList.remove('active')
+  navShortcuts?.classList.remove('active')
+
+  showView('view-first-run')
+
+  const container = document.getElementById('first-run-content')
+  if (!container) return
+
+  container.innerHTML = `
+    <img src="../../build/appicon.png" alt="Shade Logo" class="welcome-logo" />
+    <h1>Welcome to Shade</h1>
+    <p>
+      Shade is your invisible AI assistant. To begin, connect to a cloud provider 
+      using an API key or link a local model running on your machine.
+    </p>
+
+    <div class="first-run-panel">
+      <h3>Quick Setup Options</h3>
+      
+      <div class="first-run-option">
+        <div class="first-run-option-icon">
+          <span class="nav-icon" data-icon="website"></span>
+        </div>
+        <div class="first-run-option-content">
+          <div class="first-run-option-title">Cloud Providers</div>
+          <div class="first-run-option-desc">Professional models requiring an API key. Fast and powerful.</div>
+          <div class="first-run-option-tags">
+            <span class="first-run-tag">Gemini</span>
+            <span class="first-run-tag">OpenAI</span>
+            <span class="first-run-tag">Anthropic</span>
+            <span class="first-run-tag">Grok</span>
+            <span class="first-run-tag">OpenRouter</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="first-run-option">
+        <div class="first-run-option-icon">
+          <span class="nav-icon" data-icon="display"></span>
+        </div>
+        <div class="first-run-option-content">
+          <div class="first-run-option-title">Local Providers</div>
+          <div class="first-run-option-desc">Private and free models running locally on your hardware.</div>
+          <div class="first-run-option-tags">
+            <span class="first-run-tag">Ollama</span>
+            <span class="first-run-tag">LM Studio</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: center;">
+      <button id="first-run-go-to-config" class="action-btn primary" type="button" style="min-width: 240px; height: 44px; font-size: 14px;">
+        <span class="nav-icon" data-icon="config"></span>
+        Configure AI Provider
+      </button>
+    </div>
+  `
+
+  // Insert icons
+  container.querySelectorAll('[data-icon]').forEach(el => {
+    insertIcon(el, el.dataset.icon, 'icon-svg')
+  })
+
+  const btn = document.getElementById('first-run-go-to-config')
+  if (btn) {
+    btn.addEventListener('click', () => {
+      const navConfigurationEl = document.getElementById('nav-configuration')
+      if (navConfigurationEl) {
+        navConfigurationEl.click()
+      }
+    })
+  }
+}
+
+// Expose to window for testing/debugging
+window.showFirstRunExperience = showFirstRunExperience
+window.checkFirstRunState = checkFirstRunState
+
 async function init() {
   await initIcons()
 
   document.querySelectorAll('[data-icon]').forEach(el => {
     insertIcon(el, el.dataset.icon, el.classList.contains('nav-icon') || el.classList.contains('search-icon') ? undefined : 'icon-svg')
   })
+
+  // Check if this is a first-run experience (no providers configured)
+  const isFirstRun = await checkFirstRunState()
+  if (isFirstRun) {
+    showFirstRunExperience()
+    // Still initialize the rest of the UI
+  }
 
   const newChatBtn = document.getElementById('new-chat')
   const savedBtn = document.getElementById('saved-messages')

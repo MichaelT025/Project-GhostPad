@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const { safeStorage } = require('electron')
 const ProviderRegistry = require('./provider-registry')
 
 // Default system prompt for screenshot analysis
@@ -135,7 +136,31 @@ class ConfigService {
     if (!userDataPath) {
       throw new Error('userDataPath is required for ConfigService')
     }
-    this.configPath = path.join(userDataPath, 'shade-config.json')
+    
+    // Ensure data directory exists
+    const dataDir = path.join(userDataPath, 'data')
+    if (!fs.existsSync(dataDir)) {
+      try {
+        fs.mkdirSync(dataDir, { recursive: true })
+      } catch (e) {
+        console.error('Failed to create data directory:', e)
+      }
+    }
+
+    this.configPath = path.join(dataDir, 'config.json')
+    
+    // Migration: Check for old config file in root
+    const oldConfigPath = path.join(userDataPath, 'shade-config.json')
+    if (fs.existsSync(oldConfigPath) && !fs.existsSync(this.configPath)) {
+      try {
+        console.log('Migrating config file to data directory...')
+        fs.renameSync(oldConfigPath, this.configPath)
+      } catch (e) {
+        console.error('Failed to migrate config file:', e)
+        // Fallback to reading old path if move failed
+        this.configPath = oldConfigPath
+      }
+    }
 
     // Initialize provider registry with user data path
     ProviderRegistry.initProvidersPath(userDataPath)
@@ -287,6 +312,47 @@ Memory:
   }
 
   /**
+   * Encrypt a string using electron.safeStorage if available
+   * @param {string} text 
+   * @returns {string} Base64 encoded encrypted string or original text
+   */
+  encryptKey(text) {
+    if (!text) return ''
+    if (safeStorage && safeStorage.isEncryptionAvailable()) {
+      try {
+        return safeStorage.encryptString(text).toString('base64')
+      } catch (error) {
+        console.error('Encryption failed:', error)
+        return text
+      }
+    }
+    return text
+  }
+
+  /**
+   * Decrypt a string using electron.safeStorage if available
+   * @param {string} encryptedText 
+   * @returns {string} Decrypted string or original text
+   */
+  decryptKey(encryptedText) {
+    if (!encryptedText) return ''
+    if (safeStorage && safeStorage.isEncryptionAvailable()) {
+      try {
+        // Check if string is base64
+        if (/^[a-zA-Z0-9+/]*={0,2}$/.test(encryptedText)) {
+            const buffer = Buffer.from(encryptedText, 'base64')
+            return safeStorage.decryptString(buffer)
+        }
+      } catch (error) {
+        // If decryption fails, it might be a plain text key (from migration or manual edit)
+        // console.debug('Decryption failed, treating as plain text', error)
+        return encryptedText
+      }
+    }
+    return encryptedText
+  }
+
+  /**
    * Load configuration from disk
    * @returns {Object}
    */
@@ -314,7 +380,59 @@ Memory:
         if (needsMigration(loadedConfig)) {
           console.log('Config needs migration from old format')
           loadedConfig = migrateConfig(loadedConfig)
-          // Save the migrated config
+          // Save the migrated config (will trigger encryption if implemented in save)
+          this.config = loadedConfig
+          this.saveConfig()
+        }
+
+        // Auto-encrypt keys that are in plain text
+        let needsSave = false
+        if (loadedConfig.providers) {
+          for (const providerId in loadedConfig.providers) {
+            const provider = loadedConfig.providers[providerId]
+            if (provider.apiKey && safeStorage && safeStorage.isEncryptionAvailable()) {
+              // Try to decrypt; if it returns same string but wasn't empty, it might be plain text
+              // But a simpler heuristic: if it doesn't look like base64 or safeStorage throws on decrypt, 
+              // we can assume it's plain text.
+              // However, "sk-..." is valid base64 chars (mostly).
+              // Let's use a flag or try-decrypt approach. 
+              // Our decryptKey function returns the input if it fails.
+              // But we can't easily distinguish "failed because plain text" vs "failed because corrupt".
+              
+              // Strategy: Attempt to decrypt. If it throws or we want to be sure, we can just re-encrypt plain text keys.
+              // But how do we know if it IS plain text?
+              // Standard API keys (sk-...) usually contain characters that are valid in base64.
+              // We'll rely on the fact that we encrypt on set.
+              // Migration: If we just migrated, the keys are plain text.
+              // We can check if the key starts with 'sk-' (OpenAI) or 'AIza' (Gemini) etc.
+              // Or we can just try to encrypt everything that isn't already encrypted?
+              // No, duplicate encryption is bad.
+              
+              // Let's rely on `needsMigration` logic which we already ran.
+              // If we want to ensure encryption for existing keys in a new file location:
+              
+              // We'll leave it for now. The `setApiKey` will handle new keys.
+              // Ideally, we should iterate and encrypt all plain text keys once.
+              // Since keys like 'sk-...' usually fail decryption (invalid ciphertext), we can detect that.
+              
+              try {
+                  const buffer = Buffer.from(provider.apiKey, 'base64')
+                  safeStorage.decryptString(buffer)
+                  // If this succeeds, it's likely already encrypted.
+              } catch (e) {
+                  // Decryption failed, assume plain text and encrypt it.
+                  // Only encrypt if it looks like a real key (length > 0)
+                  if (provider.apiKey.length > 0) {
+                      console.log(`Encrypting plain text API key for ${providerId}`)
+                      provider.apiKey = this.encryptKey(provider.apiKey)
+                      needsSave = true
+                  }
+              }
+            }
+          }
+        }
+        
+        if (needsSave) {
           this.config = loadedConfig
           this.saveConfig()
         }
@@ -362,7 +480,8 @@ Memory:
    */
   getApiKey(providerName) {
     if (this.config.providers && this.config.providers[providerName]) {
-      return this.config.providers[providerName].apiKey || ''
+      const encrypted = this.config.providers[providerName].apiKey || ''
+      return this.decryptKey(encrypted)
     }
     return ''
   }
@@ -377,7 +496,7 @@ Memory:
       if (!this.config.providers[providerName]) {
         this.config.providers[providerName] = {}
       }
-      this.config.providers[providerName].apiKey = apiKey
+      this.config.providers[providerName].apiKey = this.encryptKey(apiKey)
       this.saveConfig()
     }
   }

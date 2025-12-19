@@ -276,7 +276,26 @@ button:active,
   justify-content: center;
   text-align: center;
   padding: var(--space-48);
-  opacity: 0.6;
+}
+
+.welcome-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-elev-2);
+  margin-bottom: var(--space-24);
+  flex-shrink: 0;
+  transition: all var(--duration-normal) var(--easing);
+  cursor: default;
+}
+
+.welcome-logo:hover {
+  transform: scale(1.05) translateY(-4px);
+  box-shadow: 
+    var(--shadow-elev-3),
+    0 0 20px var(--accent-muted);
+  border-color: var(--accent);
 }
 
 .empty-state-icon {
@@ -298,6 +317,7 @@ button:active,
   color: var(--text-secondary);
   margin-bottom: 0;
 }
+
 
 /* ========================================
    DIVIDER
