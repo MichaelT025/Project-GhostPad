@@ -2,9 +2,9 @@
 # Shade
 
 **Version:** 1.0
-**Last Updated:** December 19, 2024
+**Last Updated:** December 20, 2025
 **Author:** Product Team
-**Status:** Draft for V1 Release
+**Status:** Living document (V1 shipped)
 
 ---
 
@@ -137,9 +137,9 @@ Shade is an invisible assistant that:
 **Actor:** Student
 **Scenario:** Professor's slides are on screen with complex concepts
 **Flow:**
-1. Student opens GhostPad (collapsed state)
+1. Student opens Shade (collapsed state)
 2. Types "Explain these notes to me" and presses Enter
-3. GhostPad captures screenshot, sends to LLM
+3. Shade captures screenshot, sends to LLM
 4. Overlay expands, shows streaming explanation
 5. Student asks follow-up: "What does [specific term] mean?"
 6. AI responds with context from the screenshot
@@ -149,7 +149,7 @@ Shade is an invisible assistant that:
 **Scenario:** LeetCode problem displayed in browser
 **Flow:**
 1. Developer sees difficult problem
-2. Opens GhostPad, types "Show me step by step how to solve this"
+2. Opens Shade, types "Show me step by step how to solve this"
 3. AI analyzes problem from screenshot
 4. Provides conceptual approach, then pseudocode, then solution
 5. Developer asks clarifying questions as needed
@@ -159,7 +159,7 @@ Shade is an invisible assistant that:
 **Scenario:** IDE showing error message and stack trace
 **Flow:**
 1. Developer encounters cryptic error
-2. Opens GhostPad, types "What's causing this error?"
+2. Opens Shade, types "What's causing this error?"
 3. AI reads error message and surrounding code context
 4. Provides explanation and suggested fix
 5. Developer implements fix, asks follow-up if needed
@@ -169,7 +169,7 @@ Shade is an invisible assistant that:
 **Scenario:** Unfamiliar term, chart, or interface on screen
 **Flow:**
 1. User sees something confusing
-2. Opens GhostPad, types "What is [thing] on my screen?"
+2. Opens Shade, types "What is [thing] on my screen?"
 3. AI identifies and explains the element
 4. User continues their work
 
@@ -189,13 +189,13 @@ Shade is an invisible assistant that:
 
 | Feature | Shade | Cluely | ChatGPT Desktop | Copilot |
 |---------|-------|--------|-----------------|---------|
-| **Price** | Free (BYOK) | $60/month | $20/month | Free/$20 |
+| **Price** | Free (BYOK) | $20/month | $20/month | Free/$20 |
 | **Screen Capture** | Yes | Yes | No | Limited |
 | **Always-on-top** | Yes | Yes | No | No |
 | **Privacy** | Local only | Their servers | Their servers | Their servers |
 | **Open Source** | Yes | No | No | No |
 | **Multi-provider** | Yes | No | OpenAI only | Microsoft only |
-| **Local Models** | Yes (planned) | No | No | No |
+| **Local Models** | Yes | No | No | No |
 | **Overlay Exclusion** | Yes | Yes | N/A | N/A |
 
 ### 4.2 Competitive Advantages
@@ -225,10 +225,10 @@ Shade is an invisible assistant that:
 | P0-1 | **Collapsible Overlay** | Default collapsed state (input bar only), expands on first message, manual toggle via shortcut |
 | P0-2 | **Homepage with Sessions** | Session history (last 30 days), searchable by title, deletable, resumable |
 | P0-3 | **Provider Registry** | Unified config system for all providers (LLredo.md architecture) |
-| P0-4 | **Local Model Support** | OpenAI-compatible custom endpoint for Ollama, LM Studio, etc. |
-| P0-5 | **Fixed Memory Limit** | Predefined message limit per session, prompt to start new chat when near limit |
+| P0-4 | **Local Model Support** | OpenAI-compatible local endpoints (Ollama / LM Studio) |
+| P0-5 | **Conversation Memory Controls** | Configurable history limit + optional summarization; option to exclude screenshots from memory |
 | P0-6 | **Manual Screenshot** | "Use Screen" button captures current screen |
-| P0-7 | **Multi-provider Support** | Gemini, OpenAI, Anthropic fully functional |
+| P0-7 | **Multi-provider Support** | Gemini, OpenAI, Anthropic, plus OpenAI-compatible providers (e.g., Grok, OpenRouter) |
 | P0-8 | **Streaming Responses** | Real-time response rendering with markdown/LaTeX/code |
 | P0-9 | **Overlay Exclusion** | Window hidden from screen recordings via `setContentProtection` |
 | P0-10 | **Settings Window** | API keys, provider selection, model selection per provider |
@@ -291,10 +291,11 @@ Shade is an invisible assistant that:
 - **Synchronization:** Moving or resizing (width) the window in one state automatically synchronizes it with the other to ensure a seamless transition without position "snapping."
 
 **Keyboard Shortcuts:**
-- `Ctrl+/`: Toggle overlay visibility (show/hide)
+- `Ctrl+/`: Toggle overlay visibility (minimize/restore)
 - `Ctrl+R`: New chat (clear session)
-- `Ctrl+[TBD]`: Toggle collapsed/expanded
-- `Ctrl+[TBD]`: Open model switcher
+- `Ctrl+'`: Toggle collapsed/expanded
+- `Ctrl+Shift+S`: Capture screenshot
+- `Ctrl+M`: Open model switcher (macOS: `Cmd+Shift+M`)
 
 ### 6.2 Homepage with Sessions
 
@@ -407,33 +408,48 @@ providers/*.js (provider implementations)
 
 ### 6.6 Model Switcher
 
-**Description:** Quick way to change models without going to settings.
+**Description:** Quick way to change models without leaving the overlay.
 
-**Implementation Options:**
-1. **Keyboard Shortcut:** `Ctrl+M` opens popup with model list
-2. **Slash Command:** `/models` in input field opens selector
-3. **Title Bar:** Click on model name in status pill to open selector
+**Implementation:**
+- **Global shortcut:** `Ctrl+M` opens a dedicated model switcher window (macOS: `Cmd+Shift+M`)
+- Lists models for the current provider and updates the active selection
 
 **Selector UI:**
-- Groups models by provider
 - Shows current selection
-- Quick filter/search
-- Recently used models at top
+- Search/filter
+- Fast keyboard-driven selection
 
 ### 6.7 Memory Management
 
-**Description:** Simplified conversation memory with fixed limits.
+**Description:** Keep responses coherent without runaway token costs.
 
 **Approach:**
-- Fixed limit of N messages per session (e.g., 20-30 messages)
-- No user-configurable limits (removed complexity)
-- When approaching limit, show notification: "This session is getting long. Consider starting a new chat for better responses."
-- Full history saved locally, but only recent N sent to LLM
+- Save full session history locally
+- Send only the most recent N messages to the LLM (**History Limit**, configurable)
+- Optional **summarization** to preserve older context without sending the entire transcript
+- Optional **Exclude screenshots from memory** so the LLM doesn’t get prior image context unless explicitly re-attached
 
 **Rationale:**
-- Simpler UX than configurable limits
-- Prevents runaway token costs
-- Encourages focused conversations
+- Keeps latency/cost predictable
+- Avoids context bloat while staying useful
+- Gives users control over what gets reused
+
+### 6.8 Stop Response
+
+**Description:** Let users interrupt generation when a response is going in the wrong direction.
+
+**Behavior:**
+- While streaming, the UI exposes a **Stop** action
+- The main process aborts the in-flight provider request and returns control immediately
+
+### 6.9 Data Management (Local)
+
+**Description:** Provide explicit controls for local-only data retention.
+
+**Behavior:**
+- Sessions (and any persisted screenshots) live under the user data folder
+- Dashboard supports deleting single sessions and a **Delete all data** wipe
+- Users can open the data folder directly from the UI
 
 ---
 
@@ -508,42 +524,34 @@ Renderer updates UI progressively
 Session saved to local storage
 ```
 
-### 7.4 File Structure (V1)
+### 7.4 File Structure (Current)
 
 ```
 /src
   /main
-    main.js              # Main process entry
-    preload.js           # IPC bridge
-    window-manager.js    # Window state management
+    main.js                 # Main process entry + IPC handlers + global shortcuts
+    preload.js              # IPC bridge
   /renderer
-    /pages
-      homepage.html      # NEW: Session list + settings access
-      homepage.js
-      overlay.html       # Renamed from index.html
-      overlay.js         # Renamed from app.js
-      settings.html
-      settings.js
-    /components          # Shared UI components
-    /styles
-      tokens.css
-      homepage.css       # NEW
-      overlay.css
-      settings.css
-    /assets/icons
-    /utils
+    index.html              # Overlay UI
+    app.js                  # Overlay logic
+    homepage.html           # Dashboard (sessions/config/modes/shortcuts)
+    homepage.js
+    settings.html           # Embedded settings page (used by dashboard)
+    settings.js
+    model-switcher.html     # Dedicated model picker window
+    model-switcher.js
+    /assets/icons           # Built-in + custom SVG icons
+    /styles                 # CSS tokens + components
+    /utils                  # UI helpers + memory manager
   /services
-    config-service.js
-    session-storage.js   # NEW: Session persistence
-    provider-registry.js # NEW: Central provider metadata
-    llm-factory.js
-    llm-service.js
-    screen-capture.js
-    /providers
-      gemini-provider.js
-      openai-provider.js
-      anthropic-provider.js
-      custom-provider.js # NEW: OpenAI-compatible endpoint
+    config-service.js       # Encrypted keys, modes, memory/session settings
+    session-storage.js      # Sessions + screenshot persistence + retention cleanup
+    provider-registry.js    # Provider metadata + model lists + migration
+    llm-factory.js          # Provider instantiation
+    llm-service.js          # LLM orchestration
+    model-refresh.js        # Refresh model lists
+    screen-capture.js       # Screenshot capture + compression
+    /providers              # Provider implementations
 ```
 
 ### 7.5 Session Storage Schema
@@ -615,9 +623,9 @@ userData/
 |----------|--------|
 | `Ctrl+/` | Toggle overlay visibility |
 | `Ctrl+R` | New chat (clear current session) |
-| `Ctrl+E` | Toggle collapsed/expanded (TBD) |
-| `Ctrl+M` | Open model switcher (TBD) |
-| `Ctrl+,` | Open settings (TBD) |
+| `Ctrl+'` | Toggle collapsed/expanded |
+| `Ctrl+Shift+S` | Capture screenshot |
+| `Ctrl+M` | Open model switcher (macOS: `Cmd+Shift+M`) |
 | `Enter` | Send message |
 | `Shift+Enter` | New line in input |
 | `Escape` | Close overlay / cancel |
@@ -820,10 +828,10 @@ userData/
 
 ### B. References
 
-- [CLAUDE.md](/CLAUDE.md) - Technical implementation details
-- [LLredo.md](/docs/plans/LLredo.md) - Provider registry refactor plan
-- [memoryplan.md](/docs/plans/memoryplan.md) - Memory management plan
-- [context.md](/docs/agents/context.md) - Product context and decisions
+- [README.md](/README.md) - Installation and user-facing overview
+- [docs/CONFIGURATION.md](/docs/CONFIGURATION.md) - Provider configuration and data locations
+- [docs/modes.md](/docs/modes.md) - Shipped system prompt modes
+- [docs/TESTS_SETUP.md](/docs/TESTS_SETUP.md) - Test setup and running Vitest
 
 ### C. Change Log
 
@@ -831,6 +839,7 @@ userData/
 |---------|------|---------|
 | 1.0 | 2025-12-16 | Initial PRD creation |
 | 1.1 | 2025-12-19 | Updated storage architecture (Data consolidation, safeStorage), added "Open Data Folder" feature |
+| 1.2 | 2025-12-20 | Updated PRD to match shipped features (shortcuts, model switcher, stop response, local data controls) |
 
 ---
 

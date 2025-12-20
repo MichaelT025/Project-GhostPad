@@ -8,13 +8,15 @@ A Windows desktop application providing real-time AI assistance through a transl
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+> Note: Windows is the primary supported platform today. Shade has some macOS compatibility work (icons + shortcut conflicts), but packaged macOS releases are not yet an official target.
+
 ## Why Shade?
 
 - **Privacy-First** - All data stays on your machine. No telemetry, no cloud sync, no tracking.
 - **BYOK (Bring Your Own Key)** - No subscriptions. Use your own API keys and pay only for what you use.
 - **Free & Open Source** - MIT licensed, community-driven development.
 - **Lightweight** - Minimal, fast, stays out of your way until you need it.
-- **Provider Agnostic** - Works with Gemini, OpenAI, Anthropic, or your own local models.
+- **Provider Agnostic** - Works with Gemini, OpenAI, Anthropic, Grok, OpenRouter or your own local models.
 
 ## Features
 
@@ -26,7 +28,8 @@ A Windows desktop application providing real-time AI assistance through a transl
 - **Session history dashboard** - Browse, search, rename, save, and resume conversations (stored locally)
 - **System prompt modes** - Built-in modes and editable prompts (per-mode)
 - **In-app configuration** - Provider, API key validation, model selection + refresh, and screenshot/memory toggles
-- **Keyboard shortcuts** - Toggle visibility, start new chat, collapse/expand
+- **Model switcher** - Open a dedicated model picker window (`Ctrl+M`)
+- **Keyboard shortcuts** - Toggle visibility, start new chat, collapse/expand, capture screenshot
 
 ## Installation
 
@@ -43,8 +46,8 @@ A Windows desktop application providing real-time AI assistance through a transl
 
 ```bash
 # Clone the repository
-git clone https://github.com/MichaelT025/Project-GhostPad.git
-cd Project-GhostPad
+git clone https://github.com/MichaelT025/Shade.git
+cd Shade
 
 # Install dependencies
 npm install
@@ -73,9 +76,11 @@ npm run dev
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+/` | Toggle overlay visibility |
+| `Ctrl+/` | Toggle overlay visibility (minimize/restore) |
 | `Ctrl+R` | Start new chat |
 | `Ctrl+'` | Toggle collapsed/expanded |
+| `Ctrl+Shift+S` | Capture screenshot |
+| `Ctrl+M` | Open model switcher (macOS: `Cmd+Shift+M`) |
 
 ### Basic Workflow
 
@@ -89,7 +94,6 @@ npm run dev
 
 - Drag the title bar to reposition
 - Resize by dragging edges (Both states are resizable)
-- **State Memory**: Window size and position are remembered and synced between collapsed and expanded modes (width/position are shared, heights are independent).
 - Screenshots persist until you start a new chat
 - Use the Dashboard to manage sessions and configuration
 
@@ -107,9 +111,10 @@ npm run dev
 Shade is designed with privacy as a core principle:
 
 - **Local Storage Only** - Config and sessions stored in your user data directory
+- **Encrypted API keys** - Stored using OS-level encryption via Electron `safeStorage` when available
 - **No Cloud Sync** - Nothing leaves your machine except API calls to your chosen provider
 - **No Telemetry** - We don't track usage, collect analytics, or phone home
-- **You Control the Data** - Screenshots sent directly to LLM, then discarded
+- **You Control the Data** - Sessions (and any attached screenshots) are stored locally in your user data folder, and can be deleted any time (including a full wipe from the Dashboard)
 - **Open Source** - Audit the code yourself
 
 ## Development
@@ -153,7 +158,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, testing/build commands, 
 - [x] Session history dashboard (search, rename, bulk actions)
 - [x] OpenAI-compatible local endpoints (Ollama / LM Studio)
 - [x] Automatic screenshot mode
-- [x] Model selection & quick-switcher (`Ctrl+M`)
+- [x] Model selection & quick-switcher (`Ctrl+M`, macOS: `Cmd+Shift+M`)
 - [x] System prompt modes (built-in + editable)
 - [x] Smart memory management with summarization
 - [x] Unit test suite (Vitest)

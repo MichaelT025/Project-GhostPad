@@ -6,8 +6,11 @@ Thanks for your interest in contributing to Shade!
 
 ### Prerequisites
 
-- Windows 10 (version 2004+) or Windows 11
-- Node.js 18+
+- Windows 10 (version 2004+) or Windows 11 (primary supported platform)
+- Node.js 18+ (npm comes with Node)
+
+> Note: There is some macOS compatibility work in the codebase (icons + shortcut conflicts), but official packaged macOS releases are not currently a target.
+
 
 ### Setup
 
@@ -18,6 +21,15 @@ Thanks for your interest in contributing to Shade!
 ```bash
 npm install
 ```
+
+If you’re cloning the upstream repo directly:
+
+```bash
+git clone https://github.com/MichaelT025/Shade.git
+cd Shade
+npm install
+```
+
 
 ### Run the app
 
@@ -47,11 +59,28 @@ npm run test:ui
 npm run test:coverage
 ```
 
+## Docs
+
+- `README.md` for the user-facing overview
+- `docs/PRD.md` for product requirements and scope
+- `docs/CONFIGURATION.md` for provider/config details
+- `docs/TESTS_SETUP.md` for a deeper test walkthrough
+
 ## Building
+
+
+- Windows installer (NSIS):
 
 ```bash
 npm run build:win
 ```
+
+- Full build (electron-builder default targets for your OS):
+
+```bash
+npm run build
+```
+
 
 ## Making changes
 
@@ -62,7 +91,12 @@ git checkout -b feat/your-feature-name
 ```
 
 - Keep changes focused and scoped to a single purpose.
+- Prefer small PRs with a clear reason (“why”) in the description.
 - If you change behavior, include a test when it’s practical.
+- If you touch persistence/config:
+  - Sessions and screenshots are stored under the Electron `userData` folder (see `src/services/session-storage.js` and `src/services/config-service.js`).
+  - Be careful not to introduce migrations that can delete user data.
+
 
 ## Commit messages
 

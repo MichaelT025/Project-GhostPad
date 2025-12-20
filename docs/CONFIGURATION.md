@@ -2,201 +2,235 @@
 
 Shade is BYOK (Bring Your Own Key): you connect your own model provider(s) by adding API keys and selecting models. Shade stores everything locally (no cloud sync).
 
+This doc covers:
+- First-time setup (recommended, in-app)
+- Advanced/dev configuration (editing JSON in the user data folder)
+
+## First-time setup (recommended)
+
+### 1) Launch Shade
+
+Run the app and open the Dashboard:
+- From the overlay, click the Settings/Dashboard button
+- Or use whatever entry point your build exposes (the Dashboard is the main “settings” surface)
+
+### 2) Configure a provider
+
+1. In the Dashboard, open **Configuration**
+2. Choose a provider (e.g., Gemini, OpenAI, Anthropic, OpenRouter, Grok, Ollama, LM Studio)
+3. Paste your API key (if required)
+4. Click **Test/Validate** (if available)
+5. Pick a model
+6. Optionally click **Refresh Models** to pull the latest models
+
+### 3) Choose screenshot + memory behavior
+
+In **Configuration** you can also control:
+- **Screenshot mode**: manual vs auto-capture per message
+- **Memory**:
+  - **History Limit** (how many recent messages are sent as context)
+  - **Summarization** (optional)
+  - **Exclude screenshots from memory** (recommended if you don’t want old images reused as context)
+
+### 4) Start chatting
+
+- Attach a screenshot (“Use Screen”) when needed
+- Send a message
+- Use the model switcher (`Ctrl+M`; macOS uses `Cmd+Shift+M` to avoid overriding system minimize)
+
 ## Where config lives
 
-Shade writes its configuration into your OS user data directory.
+Shade writes configuration and local data into Electron’s `userData` directory, under a `data/` folder.
 
-- Main config: `shade-config.json`
-- Provider catalog (editable list of providers/models): `shade-providers.json`
-- Sessions (Phase 3): `sessions/*.json`
+- Main config: `data/config.json`
+- Provider catalog (editable provider + model metadata): `data/providers.json`
+- Sessions: `data/sessions/*.json`
+- Screenshots: `data/screenshots/<sessionId>/*.jpg`
 
-The exact `userData` path depends on your OS:
+Typical OS locations for Electron `userData`:
+- Windows: `%APPDATA%/Shade/`
+- macOS: `~/Library/Application Support/Shade/`
+- Linux: `~/.config/Shade/`
 
-- Windows: `%APPDATA%/<YourAppName>/` (or similar)
-- macOS: `~/Library/Application Support/<YourAppName>/`
-- Linux: `~/.config/<YourAppName>/`
+If you can’t find it:
+- Open the Dashboard → **Configuration** → click **Open Data Folder** (if present)
+- Or search your machine for `config.json` inside a `Shade/data/` directory
 
-If you can’t find it, open Shade once and then search your machine for `shade-config.json`.
+### Migration note
 
-## Configure providers via Settings (recommended)
-
-Use the in-app Settings window:
-
-1. Open **Settings** (gear icon in the overlay).
-2. Pick a provider from the dropdown.
-3. Paste your API key.
-4. Select a model from the dropdown.
-5. (Optional) Click **Refresh Models** to fetch the latest models from the provider's API.
-6. Click **Test** to verify the connection works.
-7. Click **Save** and close settings.
-
-Shade will use the **Active Provider** for new messages.
-
-### Refreshing Models
-
-Click the **Refresh Models** button next to any provider to automatically fetch the latest available models:
-
-- **Cloud providers** (OpenAI, Gemini, OpenRouter): Fetches from their API using your API key
-- **Local providers** (Ollama, LM Studio): Queries your local server to see what models are installed
-- **Anthropic**: Updates from a manually maintained list (no public API available)
-
-Models are cached for 7 days. You can manually refresh anytime to get newly released models without updating Shade.
-
-## Supported provider types
-
-Shade’s provider registry supports these types:
-
-- `gemini` (Google Gemini)
-- `openai` (OpenAI)
-- `anthropic` (Claude)
-- `openai-compatible` (any OpenAI-compatible server, including local)
+Older installs may have used `shade-config.json` and `shade-providers.json` directly under `userData`. On startup, Shade will attempt to migrate them into `data/config.json` and `data/providers.json`.
 
 ## Provider setup quick steps
 
 ### Google Gemini
 
 1. Create an API key: `https://makersuite.google.com/app/apikey`
-2. In Settings, choose **Google Gemini**
-3. Paste the key and pick a model (e.g. `gemini-2.0-flash-exp`)
+2. In Configuration, choose **Google Gemini**
+3. Paste the key and pick a model (e.g. `gemini-1.5-flash`)
 
 ### OpenAI
 
 1. Create an API key: `https://platform.openai.com/api-keys`
-2. In Settings, choose **OpenAI**
+2. In Configuration, choose **OpenAI**
 3. Paste the key and pick a model (e.g. `gpt-4o`)
 
 ### Anthropic Claude
 
 1. Create an API key: `https://console.anthropic.com/`
-2. In Settings, choose **Anthropic Claude**
+2. In Configuration, choose **Anthropic Claude**
 3. Paste the key and pick a model
 
-### Local / OpenAI-compatible (Ollama, LM Studio, etc.)
+### OpenAI-compatible (local or hosted)
 
 Use this when your server exposes an OpenAI-compatible API.
 
-- Ollama default base URL: `http://localhost:11434/v1`
-- LM Studio default base URL (common): `http://localhost:1234/v1`
+Common local defaults:
+- Ollama: `http://localhost:11434/v1`
+- LM Studio: `http://localhost:1234/v1`
 
 Steps:
+1. Ensure your local server is running and exposes an OpenAI-compatible `/v1` API
+2. In Configuration, choose the provider (e.g., Ollama / LM Studio)
+3. Confirm the **Base URL**
+4. Choose a model name your server exposes
+5. Leave API key blank if it’s not required
 
-1. Ensure your local server is running and supports OpenAI-compatible chat.
-2. In Settings, choose the local provider (for Ollama, it may already exist).
-3. Confirm the **Base URL**.
-4. Set a model name that your server exposes (for Ollama, e.g. `llama3.2`).
-5. Leave API key blank if your server doesn’t require one.
+## Advanced / Dev: Configure via JSON
 
-## Advanced: Manual Configuration
+You can edit the JSON files under `userData/data/` to configure Shade without using the UI.
 
-### Editing `shade-providers.json`
+Important:
+- Shade may overwrite parts of these files when you change settings in-app.
+- Shut down Shade before editing to avoid losing changes.
 
-For advanced users, you can directly edit `shade-providers.json` to add providers, models, or customize behavior.
+### `data/config.json` (user settings)
 
-**Location:** Same directory as `shade-config.json` (see "Where config lives" above)
+This file stores:
+- Which provider/model is active
+- Provider-specific settings (including `baseUrl` for OpenAI-compatible providers)
+- Screenshot + memory settings
+- Modes (system prompts)
 
-**After editing:** Restart Shade or reopen Settings to see changes.
-
-### Provider Structure
-
-Each provider in `shade-providers.json` has this structure:
+High-level shape:
 
 ```json
 {
-  "provider-id": {
-    "name": "Display Name",
-    "type": "gemini|openai|anthropic|openai-compatible",
-    "description": "Brief description",
-    "website": "https://provider.com/api-keys",
-    "baseUrl": "http://localhost:1234/v1",  // Only for openai-compatible
-    "defaultModel": "model-id",
-    "lastFetched": null,  // Timestamp of last model refresh (ISO 8601)
+  "activeProvider": "openai",
+  "providers": {
+    "openai": {
+      "apiKey": "...",
+      "model": "gpt-4o"
+    },
+    "ollama": {
+      "apiKey": "",
+      "baseUrl": "http://localhost:11434/v1",
+      "model": "llama3.2-vision"
+    }
+  },
+  "screenshotMode": "manual",
+  "memoryLimit": 30,
+  "memorySettings": {
+    "historyLimit": 10,
+    "enableSummarization": true,
+    "excludeScreenshotsFromMemory": true
+  },
+  "sessionSettings": {
+    "autoTitleSessions": true,
+    "startCollapsed": true
+  },
+  "modes": [
+    {
+      "id": "bolt",
+      "name": "Bolt",
+      "prompt": "...",
+      "isDefault": true
+    }
+  ],
+  "activeMode": "bolt"
+}
+```
+
+Notes:
+- `providers` keys must match provider IDs from `data/providers.json` (examples in this repo: `gemini`, `openai`, `anthropic`, `grok`, `openrouter`, `ollama`, `lm-studio`).
+- `apiKey` is stored encrypted via Electron `safeStorage` when available. It may look like base64; do not “clean it up” unless you know what you’re doing.
+- For local providers, `apiKey` can be empty.
+
+### `data/providers.json` (provider + model catalog)
+
+This file defines which providers exist and which models they expose in the UI.
+
+Each provider entry generally follows this structure:
+
+```json
+{
+  "openai": {
+    "name": "OpenAI",
+    "type": "openai",
+    "description": "Vision-capable GPT models",
+    "website": "https://platform.openai.com/api-keys",
+    "defaultModel": "gpt-4o",
+    "lastFetched": null,
     "models": {
-      "model-id": {
-        "name": "Friendly Model Name",
-        "options": {  // Optional: model-specific SDK options
-          "reasoningEffort": "high"
-        }
-      }
+      "gpt-4o": { "name": "GPT-4o" },
+      "gpt-4o-mini": { "name": "GPT-4o Mini" }
+    }
+  },
+  "ollama": {
+    "name": "Ollama",
+    "type": "openai-compatible",
+    "requiresApiKey": false,
+    "baseUrl": "http://localhost:11434/v1",
+    "defaultModel": "llama3.2-vision",
+    "lastFetched": null,
+    "models": {
+      "llama3.2-vision": { "name": "Llama 3.2 Vision" }
     }
   }
 }
 ```
 
-### Required Fields
+Common fields:
+- `type`: one of `gemini`, `openai`, `anthropic`, `openai-compatible`
+- `baseUrl`: required for `openai-compatible`
+- `requiresApiKey`: if omitted, Shade assumes keys are required for most remote providers
+- `models`: map of model IDs → metadata (the ID is what gets saved into `config.json`)
 
-- **name**: Display name shown in UI
-- **type**: One of: `gemini`, `openai`, `anthropic`, `openai-compatible`
-- **models**: Object mapping model IDs to metadata
+### Adding a new model
 
-### Optional Fields
-
-- **description**: Tooltip/help text in settings
-- **website**: Link to get API keys
-- **baseUrl**: Base URL for `openai-compatible` providers (required for that type)
-- **defaultModel**: Model selected by default for new users
-- **lastFetched**: Auto-managed timestamp for model cache (null = never fetched)
-
-### Adding a New Model
-
-To add a new model to an existing provider, edit the `models` object:
+Add it under the provider’s `models` object, then restart Shade:
 
 ```json
 {
   "openai": {
     "models": {
       "gpt-4o": { "name": "GPT-4o" },
-      "gpt-5": { "name": "GPT-5" }  // Add this line
+      "gpt-4.1": { "name": "GPT-4.1" }
     }
   }
 }
 ```
 
-### Adding a New Provider
-
-To add a completely new provider:
+### Adding a new OpenAI-compatible provider
 
 ```json
 {
-  "groq": {
-    "name": "Groq",
+  "my-provider": {
+    "name": "My Provider",
     "type": "openai-compatible",
-    "description": "Ultra-fast inference",
-    "website": "https://console.groq.com/keys",
-    "baseUrl": "https://api.groq.com/openai/v1",
-    "defaultModel": "llama-3.3-70b-versatile",
+    "requiresApiKey": true,
+    "baseUrl": "https://example.com/v1",
+    "defaultModel": "my-model",
     "lastFetched": null,
     "models": {
-      "llama-3.3-70b-versatile": { "name": "Llama 3.3 70B" },
-      "mixtral-8x7b-32768": { "name": "Mixtral 8x7B" }
+      "my-model": { "name": "My Model" }
     }
   }
 }
 ```
-
-### Model-Specific Options
-
-Some models accept special options that are passed to their SDK:
-
-```json
-{
-  "openai": {
-    "models": {
-      "o1": {
-        "name": "o1",
-        "options": {
-          "reasoningEffort": "high"  // Passed to OpenAI SDK
-        }
-      }
-    }
-  }
-}
-```
-
-These options are merged into the API request automatically.
 
 ## Troubleshooting
 
-- “No API key configured …”: add a key for the active provider in Settings.
+- “No API key configured …”: add a key for the active provider (Dashboard → Configuration).
 - “Invalid API key”: re-copy the key and ensure it matches the provider.
 - Local provider not responding: verify the server is running and the `baseUrl` ends with `/v1`.
-- Model not found: the model name must exist on the provider/server.
+- Model not found: the model name must exist for the provider/server and match the ID in `providers.json`.
