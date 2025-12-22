@@ -124,13 +124,20 @@ class GeminiProvider extends LLMProvider {
    */
   async validateApiKey() {
     try {
-      // Simple test request with minimal token usage
-      const result = await this.model.generateContent('Hi')
-      result.response.text()
+      // Use countTokens which is lightweight and doesn't consume generation quota
+      await this.model.countTokens('Hi')
       return true
     } catch (error) {
-      console.error('API key validation failed:', error.message)
-      return false
+      console.warn('Gemini countTokens validation failed, falling back to generateContent:', error.message)
+      try {
+        // Fallback to simple test request
+        const result = await this.model.generateContent('Hi')
+        result.response.text()
+        return true
+      } catch (inner) {
+        console.error('API key validation failed:', inner.message)
+        return false
+      }
     }
   }
 
@@ -151,11 +158,7 @@ class GeminiProvider extends LLMProvider {
       { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image (Image Generation)' },
 
       // Gemini 2.0 Series
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-
-      // Gemini 1.5 Series (Legacy)
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Legacy)' },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Legacy)' }
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
     ]
   }
 
